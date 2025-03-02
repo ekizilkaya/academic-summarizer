@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import locale
 
-# Monkey-patch locale.setlocale (Keep this as is from your original code)
 _old_setlocale = locale.setlocale
 def safe_setlocale(category, loc=None):
     if loc == "":
@@ -18,14 +17,14 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 import threading
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from queue import Queue  # Import the Queue
 
 app = Flask(__name__)
-app.secret_key = 'your_very_secret_key'  # CHANGE THIS TO A STRONG, RANDOM KEY!
+app.secret_key = '***REMOVED***'  # Changed to be very clear.
 
-# --- Helper functions (from your original script, slightly adapted) ---
+
+# --- Helper functions (no changes needed here) ---
 async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -> List[Dict]:
-    # ... (The fetch_academic_rss function from your original code,
-    # but use the passed session_aiohttp)
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         async with session_aiohttp.get(url, timeout=30, headers=headers) as response:
@@ -137,7 +136,6 @@ def extract_numbers(text: str) -> List[str]:
     return re.findall(pattern, text)
 
 async def preprocess_articles(articles: List[Dict]) -> List[Dict]:
-    # ... (Your preprocess_articles function - no changes needed)
     quantitative_articles = [article for article in articles
                              if article['quantitative_data'] and article['abstract']]
     quantitative_articles.sort(key=lambda x: x['importance_score'], reverse=True)
@@ -145,7 +143,6 @@ async def preprocess_articles(articles: List[Dict]) -> List[Dict]:
 
 
 async def summarize_articles(articles: List[Dict], api_key: str) -> Tuple[str, Dict]:
-    # ... (Your summarize_articles function, but use the passed api_key)
     if not articles:
         return "No articles found to summarize.", {}
 
@@ -219,7 +216,6 @@ async def summarize_articles(articles: List[Dict], api_key: str) -> Tuple[str, D
     return summary, summary_data
 
 async def gemini_api_call(prompt: str, api_key: str, max_tokens: int = 8192) -> str:
-   # ... (Your gemini_api_call function, but use passed api_key)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     data = {
@@ -261,11 +257,13 @@ def index():
     }
     return render_template('index.html', journal_dict=journal_dict)
 
+# Create a queue to hold the results
+results_queue = Queue()
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
     api_key = request.form.get('api_key')
-    selected_journals = request.form.getlist('journals')  # Use getlist for checkboxes
+    selected_journals = request.form.getlist('journals')
     custom_rss_url = request.form.get('custom_rss_url')
 
     if not api_key:
@@ -296,31 +294,29 @@ def analyze():
     if not rss_sources:
         return jsonify({'error': 'Please select at least one journal or enter a custom RSS URL'}), 400
 
-    # Store data in session (important for background task)
-    session['api_key'] = api_key
-    session['rss_sources'] = rss_sources
+    # No longer storing data in session here
+    # session['api_key'] = api_key
+    # session['rss_sources'] = rss_sources
 
-    # Start background task
-    thread = threading.Thread(target=run_analysis, args=(app,))  #Pass the app context
+    # Start background task, passing the api_key and rss_sources directly
+    thread = threading.Thread(target=run_analysis, args=(app, api_key, rss_sources))
     thread.start()
 
     return jsonify({'message': 'Analysis started.  Check back later for results.'}), 202
 
 @app.route('/results')
 def results():
-    # Check if results are available in the session
-    if 'result' in session:
-        result = session.pop('result')  # Retrieve and remove from session
+    # Check if results are available in the queue
+    if not results_queue.empty():
+        result = results_queue.get()  # Retrieve and remove from queue
         return render_template('results.html', result=result)
     else:
         return "Results not available yet.  Please wait."
 
-def run_analysis(app): # Background task function
-    with app.app_context(): # Create an application context.
+def run_analysis(app, api_key, rss_sources):  # Accepts api_key and rss_sources
+    with app.app_context():
         try:
-            api_key = session['api_key'] # Retrieve data from session
-            rss_sources = session['rss_sources']
-            loop = asyncio.new_event_loop() # Create a *new* event loop
+            loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
             async def do_analysis():
@@ -338,9 +334,10 @@ def run_analysis(app): # Background task function
 
                     summary, _ = await summarize_articles(quantitative_articles, api_key)
                     return summary
+
             result = loop.run_until_complete(do_analysis())
             loop.close()
-            session['result'] = result
+            results_queue.put(result)  # Put the result into the queue
 
         except Exception as e:
-            session['result'] = f"Error: {str(e)}"
+            results_queue.put(f"Error: {str(e)}")  # Put any error into the queue
