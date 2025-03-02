@@ -271,7 +271,7 @@ def analyze():
 
     rss_sources = []
     journal_dict = {
-       "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
+    "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
         "Social Media + Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=smsa&type=etoc&feed=rss",
         "Journalism": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=joua&type=axatoc&feed=rss",
         "Communication Methods and Measures": "https://www.tandfonline.com/feed/rss/hcms20",
@@ -288,21 +288,16 @@ def analyze():
 
     if custom_rss_url:
         if not custom_rss_url.startswith(('http://', 'https://')):
-             return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
+            return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
         rss_sources.append(custom_rss_url)
 
     if not rss_sources:
         return jsonify({'error': 'Please select at least one journal or enter a custom RSS URL'}), 400
 
-    # No longer storing data in session here
-    # session['api_key'] = api_key
-    # session['rss_sources'] = rss_sources
-
-    # Start background task, passing the api_key and rss_sources directly
     thread = threading.Thread(target=run_analysis, args=(app, api_key, rss_sources))
     thread.start()
 
-    return jsonify({'message': 'Analysis started.  Check back later for results.'}), 202
+    return render_template('results_started.html') # Render result_started.html
 
 @app.route('/results')
 def results():
