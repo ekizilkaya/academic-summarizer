@@ -1,0 +1,6 @@
+Flask
+gunicorn
+aiohttp
+beautifulsoup4
+lxml
+ttkbootstrap #Not actually needed for deployment, but good for local development if you want to test.

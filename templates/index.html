@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Academic Journal Summarizer</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Academic Journal Summarizer</h1>
+        <form action="/analyze" method="post">
+            <div class="form-group">
+                <label for="api_key">Gemini API Key:</label>
+                <input type="password" class="form-control" id="api_key" name="api_key" required>
+            </div>
+
+            <div class="form-group">
+                <label>Select Journals:</label><br>
+                {% for journal_name in journal_dict %}
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="journals" id="{{ journal_name }}" value="{{ journal_name }}">
+                        <label class="form-check-label" for="{{ journal_name }}">{{ journal_name }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label for="custom_rss_url">Custom RSS URL (optional):</label>
+                <input type="url" class="form-control" id="custom_rss_url" name="custom_rss_url">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Analyze Feeds</button>
+        </form>
+    </div>
+</body>
+</html>
