@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import locale
 
+# Monkey-patch locale.setlocale
 _old_setlocale = locale.setlocale
 def safe_setlocale(category, loc=None):
     if loc == "":
@@ -16,14 +17,15 @@ import json
 from datetime import datetime
 from typing import List, Dict, Tuple
 import threading
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from queue import Queue  # Import the Queue
+# No need for session or redirect now
+from flask import Flask, render_template, request, jsonify
+from queue import Queue  # Keep the Queue
 
 app = Flask(__name__)
-app.secret_key = '***REMOVED***'  # Changed to be very clear.
+app.secret_key = '***REMOVED***'  # Important!
 
 
-# --- Helper functions (no changes needed here) ---
+# --- Helper functions (no changes) ---
 async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -> List[Dict]:
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -241,7 +243,10 @@ async def gemini_api_call(prompt: str, api_key: str, max_tokens: int = 8192) -> 
 
 # --- Flask Routes ---
 
-@app.route('/', methods=['GET'])
+# Create a queue to hold the results (Keep this)
+results_queue = Queue()
+
+@app.route('/', methods=['GET', 'POST'])  # Allow both GET and POST
 def index():
     journal_dict = {
         "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
@@ -255,60 +260,49 @@ def index():
         "Media, Culture & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=mcsa&type=axatoc&feed=rss",
         "International Journal of Communication": "https://ijoc.org/index.php/ijoc/gateway/plugin/WebFeedGatewayPlugin/rss2"
     }
+
+    if request.method == 'POST':
+        api_key = request.form.get('api_key')
+        selected_journals = request.form.getlist('journals')
+        custom_rss_url = request.form.get('custom_rss_url')
+
+        if not api_key:
+            return jsonify({'error': 'Please enter your Gemini API key'}), 400
+
+        rss_sources = []
+
+        for journal_name in selected_journals:
+            if journal_name in journal_dict:
+                rss_sources.append(journal_dict[journal_name])
+
+        if custom_rss_url:
+            if not custom_rss_url.startswith(('http://', 'https://')):
+                return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
+            rss_sources.append(custom_rss_url)
+
+        if not 1 <= len(rss_sources) <= 5:  # Enforce 1-5 sources
+            return jsonify({'error': 'Please select between 1 and 5 sources.'}), 400
+
+        # Start background task
+        thread = threading.Thread(target=run_analysis, args=(app, api_key, rss_sources))
+        thread.start()
+
+        return jsonify({'status': 'analyzing'}), 202  # Return immediately
+
+    # If it's a GET request, or after processing, render the template
     return render_template('index.html', journal_dict=journal_dict)
 
-# Create a queue to hold the results
-results_queue = Queue()
-
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    api_key = request.form.get('api_key')
-    selected_journals = request.form.getlist('journals')
-    custom_rss_url = request.form.get('custom_rss_url')
-
-    if not api_key:
-        return jsonify({'error': 'Please enter your Gemini API key'}), 400
-
-    rss_sources = []
-    journal_dict = {
-    "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
-        "Social Media + Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=smsa&type=etoc&feed=rss",
-        "Journalism": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=joua&type=axatoc&feed=rss",
-        "Communication Methods and Measures": "https://www.tandfonline.com/feed/rss/hcms20",
-        "Communication Research": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=crxa&type=axatoc&feed=rss",
-        "International Journal of Press/Politics": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=hijb&type=axatoc&feed=rss",
-        "Internet Research": "https://www.emerald.com/insight/rss/1066-2243/latest",
-        "Big Data and Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=bdsa&type=etoc&feed=rss",
-        "Media, Culture & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=mcsa&type=axatoc&feed=rss",
-        "International Journal of Communication": "https://ijoc.org/index.php/ijoc/gateway/plugin/WebFeedGatewayPlugin/rss2"
-    }
-    for journal_name in selected_journals:
-        if journal_name in journal_dict:
-            rss_sources.append(journal_dict[journal_name])
-
-    if custom_rss_url:
-        if not custom_rss_url.startswith(('http://', 'https://')):
-            return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
-        rss_sources.append(custom_rss_url)
-
-    if not rss_sources:
-        return jsonify({'error': 'Please select at least one journal or enter a custom RSS URL'}), 400
-
-    thread = threading.Thread(target=run_analysis, args=(app, api_key, rss_sources))
-    thread.start()
-
-    return render_template('results_started.html') # Render result_started.html
 
 @app.route('/results')
 def results():
     # Check if results are available in the queue
     if not results_queue.empty():
-        result = results_queue.get()  # Retrieve and remove from queue
-        return render_template('results.html', result=result)
+        result = results_queue.get()
+        return jsonify({'status': 'completed', 'result': result})
     else:
-        return "Results not available yet.  Please wait."
+        return jsonify({'status': 'pending'})
 
-def run_analysis(app, api_key, rss_sources):  # Accepts api_key and rss_sources
+def run_analysis(app, api_key, rss_sources):
     with app.app_context():
         try:
             loop = asyncio.new_event_loop()
@@ -335,4 +329,4 @@ def run_analysis(app, api_key, rss_sources):  # Accepts api_key and rss_sources
             results_queue.put(result)  # Put the result into the queue
 
         except Exception as e:
-            results_queue.put(f"Error: {str(e)}")  # Put any error into the queue
+            results_queue.put(f"Error: {str(e)}")

@@ -3,18 +3,36 @@
 <head>
     <title>Academic Journal Summarizer</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Add some basic styling for the spinner */
+        .spinner-container {
+            display: none; /* Initially hidden */
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>Academic Journal Summarizer</h1>
-        <form action="/analyze" method="post">
+        <form id="analysisForm">
             <div class="form-group">
                 <label for="api_key">Gemini API Key:</label>
                 <input type="password" class="form-control" id="api_key" name="api_key" required>
             </div>
 
             <div class="form-group">
-                <label>Select Journals:</label><br>
+                <label>Select Journals (1-5):</label><br>
                 {% for journal_name in journal_dict %}
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="checkbox" name="journals" id="{{ journal_name }}" value="{{ journal_name }}">
@@ -30,6 +48,86 @@
 
             <button type="submit" class="btn btn-primary">Analyze Feeds</button>
         </form>
+
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>Analyzing... Please wait.</p>
+        </div>
+
+        <div id="results" style="margin-top: 20px;">
+            <!-- Results will be displayed here -->
+        </div>
+         <button id="copyButton" class="btn btn-secondary" style="display: none;">Copy to Clipboard</button>
     </div>
+
+    <script>
+     document.getElementById('analysisForm').addEventListener('submit', function(event) {
+    event.preventDefault(); // Prevent the default form submission
+
+    // Show the spinner
+    document.querySelector('.spinner-container').style.display = 'block';
+
+    // Clear previous results
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('copyButton').style.display = 'none'; // Hide copy button
+
+    const formData = new FormData(this);
+    fetch('/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            // Display error message
+            document.getElementById('results').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            document.querySelector('.spinner-container').style.display = 'none';
+        } else if (data.status === 'analyzing') {
+            // Poll for results
+            pollForResult();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('results').innerHTML = `<div class="alert alert-danger">An error occurred: ${error}</div>`;
+        document.querySelector('.spinner-container').style.display = 'none';
+    });
+});
+
+function pollForResult() {
+    const intervalId = setInterval(() => {
+        fetch('/results')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'completed') {
+                    clearInterval(intervalId);
+                    document.querySelector('.spinner-container').style.display = 'none';
+                    document.getElementById('results').innerHTML = `<pre>${data.result}</pre>`;
+                     document.getElementById('copyButton').style.display = 'block';
+                } else if (data.status === 'pending') {
+                    // Still pending, continue polling
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                clearInterval(intervalId);
+                document.getElementById('results').innerHTML = `<div class="alert alert-danger">An error occurred while fetching results: ${error}</div>`;
+                document.querySelector('.spinner-container').style.display = 'none';
+            });
+    }, 5000); // Check every 5 seconds (adjust as needed)
+}
+document.getElementById('copyButton').addEventListener('click', function() {
+    const resultsText = document.querySelector('#results pre').innerText; // Get text content
+    navigator.clipboard.writeText(resultsText)
+        .then(() => {
+            alert('Results copied to clipboard!');
+        })
+        .catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy results to clipboard.');
+        });
+});
+
+    </script>
 </body>
 </html>
