@@ -45,7 +45,7 @@ Quantitative research results are typically presented in structured formats (sta
 1.  **Clone the Repository:**
 
     ```bash
-    git clone https://github.com/ekizilkaya/academic-summarizer.git  # Replace with your actual repo URL
+    git clone https://github.com/ekizilkaya/academic-summarizer.git
     cd academic-summarizer
     ```
 
