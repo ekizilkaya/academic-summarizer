@@ -18,7 +18,8 @@ import json
 from datetime import datetime
 from typing import List, Dict, Tuple
 import threading
-from flask import Flask, render_template, request, jsonify, Markup
+from flask import Flask, render_template, request, jsonify
+from markupsafe import Markup
 from queue import Queue
 
 app = Flask(__name__)
