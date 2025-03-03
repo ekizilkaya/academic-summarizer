@@ -3,165 +3,472 @@
 <head>
     <title>Academic Journal Summarizer</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        :root {
+            --primary: #2c6bb1;
+            --secondary: #5a89c1;
+            --accent: #f39c12;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --success: #28a745;
+            --card-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            --transition-speed: 0.3s;
+        }
+        
         body {
-            font-family: sans-serif;
-            margin: 20px;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
         }
-        .container {
-            max-width: 960px;
-            margin: auto;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        /* Fixed styles for result overflow */
-        #result {
-            overflow-wrap: break-word;  /* Modern way to break long words */
-            word-wrap: break-word;     /* For older browsers */
-            white-space: pre-wrap;     /* Preserve line breaks AND wrap */
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            max-width: 100%; /* Ensure the box doesn't exceed container width */
-        }
-        #result pre {
-            display: block;
-            width: 100%;  /* Ensure <pre> respects container width */
-            white-space: pre-wrap; /* Ensure pre wraps text */
-            word-break: break-word; /* Allow breaking words when necessary */
-            overflow-wrap: break-word; /* Modern way to break long words */
-        }
-
-        /* Custom styles for journal selection */
-        .journal-group {
-            margin-bottom: 15px;
-        }
-        .journal-group label {
-            font-weight: bold;
-        }
-        .journal-option {
-             display: inline-block; /* Display options horizontally */
-            margin-right: 15px;
-            margin-bottom: 5px; /* Space out options */
-            padding: 8px 12px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            background-color: #fff;
-            cursor: pointer; /* Indicate clickable */
-        }
-       .journal-option.active {
-            background-color: #007bff; /* Bootstrap primary color */
-            border-color: #007bff;
+        
+        /* Header styles */
+        .hero-header {
+            background-image: linear-gradient(rgba(44, 107, 177, 0.8), rgba(44, 107, 177, 0.9)), url('/api/placeholder/1200/300');
+            background-size: cover;
+            background-position: center;
             color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            text-align: center;
+            border-bottom: 5px solid var(--accent);
+            position: relative;
         }
+        
+        .hero-header h1 {
+            font-weight: 700;
+            font-size: 2.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .hero-header p {
+            font-size: 1.25rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        /* Card styles */
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background-color: var(--primary);
+            color: white;
+            border-radius: 8px 8px 0 0 !important;
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 1rem 1.25rem;
+        }
+        
+        .card-header i {
+            margin-right: 0.5rem;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        /* Form elements */
+        .form-control {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            padding: 0.75rem 1rem;
+            transition: all var(--transition-speed);
+        }
+        
+        .form-control:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 0.2rem rgba(90, 137, 193, 0.25);
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Journal selection */
+        .journal-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .journal-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        
+        .journal-option {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.6rem 1rem;
+            border-radius: 50px;
+            background-color: white;
+            border: 2px solid #e9ecef;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .journal-option:hover {
+            border-color: var(--secondary);
+            background-color: #f8f9fa;
+        }
+        
+        .journal-option.active {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(44, 107, 177, 0.4);
+        }
+        
+        .journal-option i {
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            border-radius: 6px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(44, 107, 177, 0.3);
+            transition: all var(--transition-speed);
+        }
+        
+        .btn-primary:hover {
+            background-color: #245a96;
+            border-color: #245a96;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(44, 107, 177, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            border-radius: 6px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            transition: all var(--transition-speed);
+        }
+        
         /* Spinner styles */
         .spinner-container {
             display: none;
-            margin-top: 20px;
-            text-align: center; /* Center the spinner */
+            margin: 2rem auto;
+            text-align: center;
         }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #3498db;
+        
+        .spinner-text {
+            margin-top: 1rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+        
+        .academic-spinner {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+        
+        .academic-spinner:after {
+            content: " ";
+            display: block;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: auto; /* Center horizontally */
+            border: 6px solid var(--primary);
+            border-color: var(--primary) transparent var(--primary) transparent;
+            animation: academic-spinner 1.2s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        
+        @keyframes academic-spinner {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
-        /* Navbar Styling*/
-        nav {
-          margin-bottom: 20px;
+        
+        /* Results section */
+        .results-card {
+            display: none;
         }
-        nav a {
-          margin-right: 10px;
-          text-decoration: none;
-          color: #007bff;
+        
+        .results-tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 1rem;
         }
-        nav a:hover {
-            text-decoration: underline;
+        
+        .results-tab {
+            padding: 0.75rem 1.25rem;
+            border: 1px solid transparent;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            margin-right: 0.25rem;
+            margin-bottom: -1px;
+            cursor: pointer;
+            color: #495057;
+            font-weight: 500;
+            transition: all var(--transition-speed);
         }
-        /* Copy Button Styling */
-        #copy-button {
-            margin-top: 10px;
+        
+        .results-tab.active {
+            color: var(--primary);
+            border-color: #dee2e6 #dee2e6 #fff;
+            background-color: #fff;
         }
-
+        
+        .results-tab:hover:not(.active) {
+            background-color: rgba(0,0,0,0.03);
+        }
+        
+        .results-content {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            padding: 1.25rem;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            background-color: white;
+        }
+        
+        .results-content pre {
+            display: block;
+            width: 100%;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #333;
+        }
+        
+        /* Copy button styling */
+        .copy-button {
+            display: none;
+            margin-top: 1rem;
+            border-radius: 6px;
+            background-color: var(--light);
+            color: var(--dark);
+            transition: all var(--transition-speed);
+        }
+        
+        .copy-button:hover {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        /* Navbar Styling */
+        .app-navbar {
+            background-color: #fff;
+            padding: 0.75rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .app-navbar a {
+            color: var(--primary);
+            margin-right: 1.5rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color var(--transition-speed);
+        }
+        
+        .app-navbar a:hover {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        /* Section headings */
+        .section-heading {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--primary);
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
-    <nav>
-      <a href="/">Home</a> |
-      <a href="/about">About</a>
+    <!-- Navigation Bar -->
+    <nav class="app-navbar">
+        <div class="container">
+            <a href="/"><i class="fas fa-home"></i> Home</a>
+            <a href="/about"><i class="fas fa-info-circle"></i> About</a>
+        </div>
     </nav>
+    
+    <!-- Hero Header -->
+    <header class="hero-header">
+        <div class="container">
+            <h1>Academic Journal Summarizer</h1>
+            <p>{{ subtitle | safe }}</p>
+        </div>
+    </header>
 
     <div class="container">
-        <h1>Academic Journal Summarizer</h1>
-        <p style="font-size: 1.2em; color: gray;">{{ subtitle | safe }}</p>
-
-        <form method="POST" id="analysis-form">
-            <div class="form-group">
-                <label for="api_key">Gemini API Key:</label>
-                <input type="text" class="form-control" id="api_key" name="api_key">
-            </div>
-
-            <div class="form-group journal-group">
-                <label>Select Journals (up to 3):</label>
-                <div id="journal-options">
-                    {% for journal, url in journal_dict.items() %}
-                    <div class="journal-option" data-value="{{ journal }}">
-                        {{ journal }}
+        <div class="row">
+            <div class="col-lg-8 offset-lg-2">
+                <!-- API Key Card -->
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <i class="fas fa-key"></i> API Configuration
                     </div>
-                    {% endfor %}
+                    <div class="card-body">
+                        <form method="POST" id="analysis-form">
+                            <div class="form-group">
+                                <label for="api_key"><i class="fas fa-lock"></i> Gemini API Key:</label>
+                                <input type="text" class="form-control" id="api_key" name="api_key" 
+                                    placeholder="Enter your Gemini API key">
+                            </div>
+
+                            <!-- Journal Selection Card -->
+                            <div class="form-group journal-group">
+                                <label><i class="fas fa-book"></i> Select Journals (up to 3):</label>
+                                <div id="journal-options" class="journal-options">
+                                    {% for journal, url in journal_dict.items() %}
+                                    <div class="journal-option" data-value="{{ journal }}">
+                                        <i class="fas fa-journal-whills"></i> {{ journal }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <!-- Hidden input to store selected journals -->
+                                <input type="hidden" name="journals" id="selected-journals">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="custom_rss_url"><i class="fas fa-rss"></i> Custom RSS URL (Optional):</label>
+                                <input type="text" class="form-control" id="custom_rss_url" name="custom_rss_url" 
+                                    placeholder="https://example.com/journal/rss">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Analyze Feed Contents
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <!-- Hidden input to store selected journals -->
-                <input type="hidden" name="journals" id="selected-journals">
+
+                <!-- Loading Spinner -->
+                <div class="spinner-container" id="spinner-container">
+                    <div class="academic-spinner"></div>
+                    <p class="spinner-text">Analyzing academic journals... Please wait.</p>
+                </div>
+
+                <!-- Results Card -->
+                <div class="card results-card" id="results-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i> Analysis Results
+                    </div>
+                    <div class="card-body">
+                        <!-- Tabbed interface for results -->
+                        <div class="results-tabs">
+                            <div class="results-tab active" data-tab="summary">Summary</div>
+                            <div class="results-tab" data-tab="details">Detailed View</div>
+                        </div>
+                        
+                        <!-- Results content -->
+                        <div class="results-content" id="result"></div>
+                        
+                        <button id="copy-button" class="btn copy-button">
+                            <i class="fas fa-copy"></i> Copy to Clipboard
+                        </button>
+                    </div>
+                </div>
             </div>
-
-            <div class="form-group">
-                <label for="custom_rss_url">Custom RSS URL (Optional):</label>
-                <input type="text" class="form-control" id="custom_rss_url" name="custom_rss_url">
-            </div>
-
-            <button type="submit" class="btn btn-primary">Analyze Feed Contents</button>
-        </form>
-
-        <div class="spinner-container" id="spinner-container">
-            <div class="spinner"></div>
-            <p>Analyzing... Please wait.</p>
         </div>
-
-        <div id="result"></div>
-        <button id="copy-button" class="btn btn-secondary" style="display: none;">Copy to Clipboard</button>
     </div>
 
     <script>
         const form = document.getElementById('analysis-form');
         const spinnerContainer = document.getElementById('spinner-container');
         const resultDiv = document.getElementById('result');
+        const resultsCard = document.getElementById('results-card');
         const journalOptions = document.querySelectorAll('.journal-option');
         const selectedJournalsInput = document.getElementById('selected-journals');
-        const copyButton = document.getElementById('copy-button'); // Get the copy button
+        const copyButton = document.getElementById('copy-button');
+        const resultsTabs = document.querySelectorAll('.results-tab');
         let selectedJournals = [];
+        let analysisResults = null;
 
-        // Journal selection logic
+        // Initialize tabbed interface
+        resultsTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                resultsTabs.forEach(t => t.classList.remove('active'));
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // If we had different views, we would switch content here
+                // For now, just animate the transition
+                resultDiv.style.opacity = 0;
+                setTimeout(() => {
+                    resultDiv.style.opacity = 1;
+                }, 150);
+            });
+        });
+
+        // Journal selection logic with improved animation
         journalOptions.forEach(option => {
             option.addEventListener('click', () => {
                 const journal = option.dataset.value;
                 if (selectedJournals.includes(journal)) {
                     selectedJournals = selectedJournals.filter(j => j !== journal);
                     option.classList.remove('active');
+                    
+                    // Remove icon animation
+                    const icon = option.querySelector('i');
+                    icon.className = 'fas fa-journal-whills';
                 } else {
                     if (selectedJournals.length < 3) {
                         selectedJournals.push(journal);
                         option.classList.add('active');
+                        
+                        // Add icon animation for selection
+                        const icon = option.querySelector('i');
+                        icon.className = 'fas fa-check';
                     }
                 }
                 selectedJournalsInput.value = selectedJournals.join(','); // Update hidden input
@@ -172,11 +479,11 @@
             e.preventDefault();
             spinnerContainer.style.display = 'block';
             resultDiv.innerHTML = '';
-            resultDiv.style.display = 'none';
-            copyButton.style.display = 'none'; // Hide copy button initially
+            resultsCard.style.display = 'none';
+            copyButton.style.display = 'none';
 
             const formData = new FormData(form);
-             //Remove the journals field, and replace with our comma separated string
+            // Remove the journals field, and replace with our comma separated string
             formData.delete('journals')
             formData.append('journals', selectedJournalsInput.value)
 
@@ -191,12 +498,13 @@
                 const data = await response.json();
                 displayResult(data);
             } else {
-                  spinnerContainer.style.display = 'none'; // Hide the spinner
-                  const errorData = await response.json();
-                  resultDiv.innerHTML = `<p style="color: red;">Error: ${errorData.error}</p>`;
-                  resultDiv.style.display = 'block'; // Show result div with error
-                  copyButton.style.display = 'none'; // Ensure copy button is hidden on error
-
+                spinnerContainer.style.display = 'none';
+                const errorData = await response.json();
+                
+                // Show results card with error
+                resultsCard.style.display = 'block';
+                resultDiv.innerHTML = `<p style="color: red;"><i class="fas fa-exclamation-circle"></i> Error: ${errorData.error}</p>`;
+                copyButton.style.display = 'none';
             }
         });
 
@@ -211,42 +519,61 @@
                 }
             } else {
                 spinnerContainer.style.display = 'none';
-                resultDiv.innerHTML = `<p style="color: red;">Error: Failed to fetch results.</p>`;
-                resultDiv.style.display = 'block';
-                copyButton.style.display = 'none';// Ensure copy button is hidden on error
+                
+                // Show results card with error
+                resultsCard.style.display = 'block';
+                resultDiv.innerHTML = `<p style="color: red;"><i class="fas fa-exclamation-circle"></i> Error: Failed to fetch results.</p>`;
+                copyButton.style.display = 'none';
             }
         }
-      function displayResult(data) {
-        spinnerContainer.style.display = 'none';
-        if (data.result) {
-            // Trim leading spaces from each line and ensure proper wrapping
-            const trimmedResult = data.result
-                .split('\n') // Split into lines
-                .map(line => line.trimStart()) // Remove leading spaces from each line
-                .join('\n'); // Join the lines back together
 
-            resultDiv.innerHTML = `<pre>${trimmedResult}</pre>`; // Use the trimmed result
-            resultDiv.style.display = 'block';
-            copyButton.style.display = 'block';
-        } else {
-            resultDiv.innerHTML = '<p>No results found.</p>';
-            resultDiv.style.display = 'block';
-            copyButton.style.display = 'none';
+        function displayResult(data) {
+            spinnerContainer.style.display = 'none';
+            if (data.result) {
+                // Trim leading spaces from each line and ensure proper wrapping
+                const trimmedResult = data.result
+                    .split('\n')
+                    .map(line => line.trimStart())
+                    .join('\n');
+
+                // Store the results for tab switching
+                analysisResults = trimmedResult;
+                
+                // Add results with fade-in animation
+                resultDiv.innerHTML = `<pre>${trimmedResult}</pre>`;
+                resultsCard.style.display = 'block';
+                resultsCard.classList.add('fade-in');
+                copyButton.style.display = 'block';
+            } else {
+                resultsCard.style.display = 'block';
+                resultDiv.innerHTML = '<p>No results found.</p>';
+                copyButton.style.display = 'none';
+            }
         }
-    }
 
-        // Copy button functionality
+        // Copy button functionality with improved feedback
         copyButton.addEventListener('click', () => {
-            const textToCopy = resultDiv.innerText; // Get the text content (not HTML)
+            const textToCopy = resultDiv.innerText;
             navigator.clipboard.writeText(textToCopy)
                 .then(() => {
-                    // Optionally, provide feedback to the user (e.g., change button text)
-                    copyButton.innerText = 'Copied!';
-                    setTimeout(() => { copyButton.innerText = 'Copy to Clipboard'; }, 2000); // Reset after 2 seconds
+                    // Provide visual feedback
+                    copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    copyButton.classList.add('btn-success');
+                    
+                    setTimeout(() => {
+                        copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy to Clipboard';
+                        copyButton.classList.remove('btn-success');
+                    }, 2000);
                 })
                 .catch(err => {
                     console.error('Failed to copy text: ', err);
-                    alert('Failed to copy text. Please copy manually.'); // Fallback
+                    copyButton.innerHTML = '<i class="fas fa-times"></i> Failed to copy';
+                    copyButton.classList.add('btn-danger');
+                    
+                    setTimeout(() => {
+                        copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy to Clipboard';
+                        copyButton.classList.remove('btn-danger');
+                    }, 2000);
                 });
         });
     </script>
