@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import locale
 
-# Monkey-patch locale.setlocale
+# Monkey-patch locale.setlocale (this part is likely unnecessary in many modern Python environments,
+# but I'll leave it for compatibility)
 _old_setlocale = locale.setlocale
 def safe_setlocale(category, loc=None):
     if loc == "":
@@ -17,15 +18,14 @@ import json
 from datetime import datetime
 from typing import List, Dict, Tuple
 import threading
-# No need for session or redirect now
-from flask import Flask, render_template, request, jsonify
-from queue import Queue  # Keep the Queue
+from flask import Flask, render_template, request, jsonify, Markup
+from queue import Queue
 
 app = Flask(__name__)
-app.secret_key = '***REMOVED***'  # Important!
+app.secret_key = '***REMOVED***'  # IMPORTANT:  Change this!
 
 
-# --- Helper functions (no changes) ---
+# --- Helper functions (no changes here) ---
 async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -> List[Dict]:
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -243,10 +243,9 @@ async def gemini_api_call(prompt: str, api_key: str, max_tokens: int = 8192) -> 
 
 # --- Flask Routes ---
 
-# Create a queue to hold the results (Keep this)
 results_queue = Queue()
 
-@app.route('/', methods=['GET', 'POST'])  # Allow both GET and POST
+@app.route('/', methods=['GET', 'POST'])
 def index():
     journal_dict = {
         "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
@@ -289,18 +288,30 @@ def index():
 
         return jsonify({'status': 'analyzing'}), 202  # Return immediately
 
-    # If it's a GET request, or after processing, render the template
-    return render_template('index.html', journal_dict=journal_dict)
+    # If it's a GET request, or after processing, render the template.  Include the subtitle.
+    return render_template('index.html', journal_dict=journal_dict,
+                           subtitle=Markup("- Target: Top Journals in Communication<br>- Focus: Quantitative Studies"))
 
 
 @app.route('/results')
 def results():
-    # Check if results are available in the queue
     if not results_queue.empty():
         result = results_queue.get()
         return jsonify({'status': 'completed', 'result': result})
     else:
         return jsonify({'status': 'pending'})
+
+@app.route('/about')
+def about():
+    about_text = Markup("""
+        <p>A note from Emre Kızılkaya, the creator of this app:</p>
+        <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers from top Communication journals during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings.</p>
+        <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies rely on nuanced interpretations and contextual depth, which require full engagement with the text to fully appreciate their insights.</p>
+        <p>For questions or feedback, feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a></p>
+    """)
+    return render_template('about.html', about_text=about_text)
+
+
 
 def run_analysis(app, api_key, rss_sources):
     with app.app_context():
@@ -330,3 +341,7 @@ def run_analysis(app, api_key, rss_sources):
 
         except Exception as e:
             results_queue.put(f"Error: {str(e)}")
+
+
+if __name__ == '__main__':
+    app.run(debug=True)  # IMPORTANT:  Set debug=False for production!
