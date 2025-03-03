@@ -17,7 +17,7 @@
             margin-bottom: 5px;
         }
 
-        /* FINAL FIX for result overflow */
+        /* Styles for result overflow */
         #result {
             overflow-wrap: break-word;  /* Modern way to break long words */
             word-wrap: break-word;     /* For older browsers */
@@ -212,19 +212,24 @@
                 copyButton.style.display = 'none';// Ensure copy button is hidden on error
             }
         }
+      function displayResult(data) {
+        spinnerContainer.style.display = 'none';
+        if (data.result) {
+            // Trim leading spaces from each line
+            const trimmedResult = data.result
+                .split('\n') // Split into lines
+                .map(line => line.trimStart()) // Remove leading spaces from each line
+                .join('\n'); // Join the lines back together
 
-        function displayResult(data) {
-            spinnerContainer.style.display = 'none';
-            if (data.result) {
-              resultDiv.innerHTML = `<pre>${data.result}</pre>`;
-              resultDiv.style.display = 'block';
-              copyButton.style.display = 'block'; // Show copy button
-            } else {
-                resultDiv.innerHTML = '<p>No results found.</p>';
-                resultDiv.style.display = 'block';
-                copyButton.style.display = 'none'; // Hide copy button if no results
-            }
+            resultDiv.innerHTML = `<pre>${trimmedResult}</pre>`; // Use the trimmed result
+            resultDiv.style.display = 'block';
+            copyButton.style.display = 'block';
+        } else {
+            resultDiv.innerHTML = '<p>No results found.</p>';
+            resultDiv.style.display = 'block';
+            copyButton.style.display = 'none';
         }
+    }
 
         // Copy button functionality
         copyButton.addEventListener('click', () => {
