@@ -17,7 +17,7 @@
             margin-bottom: 5px;
         }
 
-        /* Corrected styles for result overflow - NO overflow-x */
+        /* Fixed styles for result overflow */
         #result {
             overflow-wrap: break-word;  /* Modern way to break long words */
             word-wrap: break-word;     /* For older browsers */
@@ -27,11 +27,14 @@
             padding: 10px;
             background-color: #f8f9fa;
             border-radius: 4px;
-            /* REMOVED: overflow-x: auto;  <-- This was the mistake! */
+            max-width: 100%; /* Ensure the box doesn't exceed container width */
         }
         #result pre {
             display: block;
             width: 100%;  /* Ensure <pre> respects container width */
+            white-space: pre-wrap; /* Ensure pre wraps text */
+            word-break: break-word; /* Allow breaking words when necessary */
+            overflow-wrap: break-word; /* Modern way to break long words */
         }
 
         /* Custom styles for journal selection */
@@ -216,7 +219,7 @@
       function displayResult(data) {
         spinnerContainer.style.display = 'none';
         if (data.result) {
-            // Trim leading spaces from each line
+            // Trim leading spaces from each line and ensure proper wrapping
             const trimmedResult = data.result
                 .split('\n') // Split into lines
                 .map(line => line.trimStart()) // Remove leading spaces from each line
