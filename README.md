@@ -11,13 +11,13 @@
 - **Target:** Top Journals in Communication
 - **Focus:** Quantitative Studies
 
-This application leverages the power of the Google Gemini API to provide concise summaries of recent academic papers, extracting key numerical data and their context. It's designed to help researchers stay up-to-date with the latest findings in their field, especially in quantitative research.
+This application utilizes a large language model (LLM) API (currently Gemini, as it is one of the most capable free LLMs available) to generate concise summaries of recent academic papers, focusing on quantitative findings. It is designed to help researchers stay up to date with the latest findings, particularly in quantitative research.
 
 ## Features ✨
 
 *   **Automated RSS Feed Processing:** Fetches and parses articles from multiple RSS feeds simultaneously.
 *   **Quantitative Data Extraction:** Identifies and extracts numerical findings (percentages, statistics, p-values, etc.) from article abstracts.
-*   **AI-Powered Summarization:** Uses the Google Gemini API to generate concise summaries, focusing on the quantitative aspects of each article.
+*   **AI-Powered Summarization:** Uses the  Gemini API to generate concise summaries, focusing on the quantitative aspects of each article.
 *   **Journal-Specific Summaries:** Organizes summaries by journal, highlighting the top 3 most important articles (based on quantitative content) from each.
 *   **Asynchronous Processing:** Uses `asyncio` and `aiohttp` for efficient and non-blocking handling of multiple requests.
 *   **User-Friendly Web Interface:** Provides a simple and intuitive interface built with Flask.
@@ -33,7 +33,7 @@ Quantitative research results are typically presented in structured formats (sta
 ## Prerequisites 🛠️
 
 *   **Python 3.7+:** Ensure you have Python 3.7 or a later version installed.
-*   **Google Gemini API Key:** Obtain an API key from [Google AI Studio](https://aistudio.google.com/).  This is *required* to use the summarization feature.
+*   **Gemini API Key:** Obtain an API key from [Google AI Studio](https://aistudio.google.com/).  This is *required* to use the summarization feature.
 *   **Required Libraries:** Install the necessary Python libraries:
 
     ```bash
