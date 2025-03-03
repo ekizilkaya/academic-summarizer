@@ -262,7 +262,9 @@ def index():
 
     if request.method == 'POST':
         api_key = request.form.get('api_key')
-        selected_journals = request.form.getlist('journals')  # Get the selected journals
+        # Get the comma-separated string and split it into a list
+        selected_journals_str = request.form.get('journals')
+        selected_journals = selected_journals_str.split(',') if selected_journals_str else []
         custom_rss_url = request.form.get('custom_rss_url')
 
         if not api_key:
@@ -270,6 +272,7 @@ def index():
 
         rss_sources = []
         for journal_name in selected_journals:
+            journal_name = journal_name.strip()  # Remove leading/trailing spaces
             if journal_name in journal_dict:
                 rss_sources.append(journal_dict[journal_name])
 
@@ -305,10 +308,10 @@ def results():
 @app.route('/about')
 def about():
     about_text = Markup("""
-        <p>Created by Emre Kızılkaya</p>
+        <p>Created by <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a></p>
         <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers from top Communication journals during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings.</p>
         <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies rely on nuanced interpretations and contextual depth, which require full engagement with the text to fully appreciate their insights.</p>
-        <p>For Open-sourced under the MIT License, you can find all the files for this project at https://github.com/ekizilkaya/academic-summarizer</a></p>
+        <p>Open-sourced under the MIT License, you can find all the files for this hobby project at <a href="https://github.com/ekizilkaya/academic-summarizer" target="_blank">GitHub repository</a>.</p>
         <p>For questions or feedback, feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a></p>
     """)
     return render_template('about.html', about_text=about_text)
