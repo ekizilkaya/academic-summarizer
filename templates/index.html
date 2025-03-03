@@ -4,10 +4,56 @@
     <title>Academic Journal Summarizer</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        /* Add some basic styling for the spinner */
-        .spinner-container {
-            display: none; /* Initially hidden */
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 960px; /* Increased max-width for better layout */
+            margin: auto;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        /* Style adjustments for the result area */
+        #result {
+            white-space: pre-wrap;
+            word-wrap: break-word; /* Handles long words */
+            overflow-x: auto;  /* Adds horizontal scrolling if needed */
             margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px; /* Rounded corners */
+        }
+        /* Custom styles for journal selection */
+        .journal-group {
+            margin-bottom: 15px;
+        }
+        .journal-group label {
+            font-weight: bold;
+        }
+        .journal-option {
+             display: inline-block; /* Display options horizontally */
+            margin-right: 15px;
+            margin-bottom: 5px; /* Space out options */
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #fff;
+            cursor: pointer; /* Indicate clickable */
+        }
+       .journal-option.active {
+            background-color: #007bff; /* Bootstrap primary color */
+            border-color: #007bff;
+            color: white;
+        }
+        /* Spinner styles */
+        .spinner-container {
+            display: none;
+            margin-top: 20px;
+            text-align: center; /* Center the spinner */
         }
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -16,48 +62,12 @@
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
+            margin: auto; /* Center horizontally */
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        /* Additional Styles (Optional, but improve appearance) */
-        body {
-            font-family: sans-serif;
-            margin: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-        }
-        label {
-            display: block; /* Make labels block-level for better spacing */
-            margin-bottom: 5px;
-        }
-        textarea, input[type="text"], input[type="submit"], select {
-            width: 100%; /* Full-width inputs/textareas */
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;  /* Include padding/border in width */
-        }
-        .btn-primary {
-          background-color: #007bff;
-          border-color: #007bff;
-        }
-
-        .btn-primary:hover {
-          background-color: #0056b3;
-          border-color: #0056b3;
-        }
-        #result {
-            white-space: pre-wrap; /* Preserve line breaks and spaces from the server */
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background-color: #f8f9fa;
-        }
-
+        /* Navbar Styling*/
         nav {
           margin-bottom: 20px;
         }
@@ -69,6 +79,7 @@
         nav a:hover {
             text-decoration: underline;
         }
+
     </style>
 </head>
 <body>
@@ -82,21 +93,30 @@
         <p style="font-size: 1.2em; color: gray;">{{ subtitle | safe }}</p>
 
         <form method="POST" id="analysis-form">
-            <label for="api_key">Gemini API Key:</label>
-            <input type="text" id="api_key" name="api_key">
-
-            <label>Select Journals:</label>
-            {% for journal, url in journal_dict.items() %}
-            <div>
-                <input type="checkbox" id="{{ journal }}" name="journals" value="{{ journal }}">
-                <label for="{{ journal }}">{{ journal }}</label>
+            <div class="form-group">
+                <label for="api_key">Gemini API Key:</label>
+                <input type="text" class="form-control" id="api_key" name="api_key">
             </div>
-            {% endfor %}
 
-            <label for="custom_rss_url">Custom RSS URL (Optional):</label>
-            <input type="text" id="custom_rss_url" name="custom_rss_url">
+            <div class="form-group journal-group">
+                <label>Select Journals (up to 3):</label>
+                <div id="journal-options">
+                    {% for journal, url in journal_dict.items() %}
+                    <div class="journal-option" data-value="{{ journal }}">
+                        {{ journal }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- Hidden input to store selected journals -->
+                <input type="hidden" name="journals" id="selected-journals">
+            </div>
 
-            <input type="submit" value="Analyze Feed Contents" class="btn btn-primary">
+            <div class="form-group">
+                <label for="custom_rss_url">Custom RSS URL (Optional):</label>
+                <input type="text" class="form-control" id="custom_rss_url" name="custom_rss_url">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Analyze Feed Contents</button>
         </form>
 
         <div class="spinner-container" id="spinner-container">
@@ -104,72 +124,89 @@
             <p>Analyzing... Please wait.</p>
         </div>
 
-        <div id="result"></div>  <!-- Result will be displayed here -->
+        <div id="result"></div>
     </div>
 
     <script>
-      const form = document.getElementById('analysis-form');
-      const spinnerContainer = document.getElementById('spinner-container');
-      const resultDiv = document.getElementById('result');
+        const form = document.getElementById('analysis-form');
+        const spinnerContainer = document.getElementById('spinner-container');
+        const resultDiv = document.getElementById('result');
+        const journalOptions = document.querySelectorAll('.journal-option');
+        const selectedJournalsInput = document.getElementById('selected-journals');
+        let selectedJournals = [];
 
-      form.addEventListener('submit', async (e) => {
-          e.preventDefault(); // Prevent default form submission
+        // Journal selection logic
+        journalOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const journal = option.dataset.value;
+                if (selectedJournals.includes(journal)) {
+                    selectedJournals = selectedJournals.filter(j => j !== journal);
+                    option.classList.remove('active');
+                } else {
+                    if (selectedJournals.length < 3) {
+                        selectedJournals.push(journal);
+                        option.classList.add('active');
+                    }
+                }
+                selectedJournalsInput.value = selectedJournals.join(','); // Update hidden input
+            });
+        });
 
-          spinnerContainer.style.display = 'block'; // Show spinner
-          resultDiv.innerHTML = ''; // Clear previous results
-          resultDiv.style.display = 'none' // Hide the result div initially
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            spinnerContainer.style.display = 'block';
+            resultDiv.innerHTML = '';
+            resultDiv.style.display = 'none';
 
+            const formData = new FormData(form);
+             //Remove the journals field, and replace with our comma separated string
+            formData.delete('journals')
+            formData.append('journals', selectedJournalsInput.value)
 
-          const formData = new FormData(form);
-          const response = await fetch('/', {
-              method: 'POST',
-              body: formData
-          });
+            const response = await fetch('/', {
+                method: 'POST',
+                body: formData
+            });
 
-          if (response.status === 202) {
-              // Start polling for results
-              pollForResult();
-          } else if (response.ok) {
-              const data = await response.json();
-              displayResult(data);
-          } else {
-                spinnerContainer.style.display = 'none'; // Hide the spinner
-                const errorData = await response.json();
-                resultDiv.innerHTML = `<p style="color: red;">Error: ${errorData.error}</p>`;
-                resultDiv.style.display = 'block'; // Show result div with error
-          }
-      });
+            if (response.status === 202) {
+                pollForResult();
+            } else if (response.ok) {
+                const data = await response.json();
+                displayResult(data);
+            } else {
+                  spinnerContainer.style.display = 'none'; // Hide the spinner
+                  const errorData = await response.json();
+                  resultDiv.innerHTML = `<p style="color: red;">Error: ${errorData.error}</p>`;
+                  resultDiv.style.display = 'block'; // Show result div with error
+            }
+        });
 
-      async function pollForResult() {
-        const response = await fetch('/results');
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.status === 'completed') {
-            displayResult(data);
-          } else if (data.status === 'pending') {
-            // Wait a bit and poll again
-            setTimeout(pollForResult, 2000); // Check every 2 seconds
-          }
-        } else {
-             // Handle errors from /results (e.g., server error)
-              spinnerContainer.style.display = 'none';
-              resultDiv.innerHTML = `<p style="color: red;">Error: Failed to fetch results.</p>`;
-              resultDiv.style.display = 'block'
+        async function pollForResult() {
+            const response = await fetch('/results');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'completed') {
+                    displayResult(data);
+                } else if (data.status === 'pending') {
+                    setTimeout(pollForResult, 2000);
+                }
+            } else {
+                spinnerContainer.style.display = 'none';
+                resultDiv.innerHTML = `<p style="color: red;">Error: Failed to fetch results.</p>`;
+                resultDiv.style.display = 'block';
+            }
         }
-      }
 
-      function displayResult(data) {
-        spinnerContainer.style.display = 'none'; // Hide spinner
-        if (data.result) {
-          resultDiv.innerHTML = `<pre>${data.result}</pre>`; // Display the result, preserving formatting
-          resultDiv.style.display = 'block'
-        } else {
-          resultDiv.innerHTML = '<p>No results found.</p>';
-          resultDiv.style.display = 'block'
+        function displayResult(data) {
+            spinnerContainer.style.display = 'none';
+            if (data.result) {
+              resultDiv.innerHTML = `<pre>${data.result}</pre>`;
+              resultDiv.style.display = 'block';
+            } else {
+                resultDiv.innerHTML = '<p>No results found.</p>';
+                resultDiv.style.display = 'block';
+            }
         }
-    }
-
     </script>
 </body>
 </html>

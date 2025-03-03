@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import locale
 
-# Monkey-patch locale.setlocale (this part is likely unnecessary in many modern Python environments,
-# but I'll leave it for compatibility)
+# Monkey-patch locale.setlocale
 _old_setlocale = locale.setlocale
 def safe_setlocale(category, loc=None):
     if loc == "":
@@ -23,7 +22,7 @@ from markupsafe import Markup
 from queue import Queue
 
 app = Flask(__name__)
-app.secret_key = '***REMOVED***'  # IMPORTANT:  Change this!
+app.secret_key = '***REMOVED***'  # IMPORTANT: Change this!
 
 
 # --- Helper functions (no changes here) ---
@@ -263,14 +262,13 @@ def index():
 
     if request.method == 'POST':
         api_key = request.form.get('api_key')
-        selected_journals = request.form.getlist('journals')
+        selected_journals = request.form.getlist('journals')  # Get the selected journals
         custom_rss_url = request.form.get('custom_rss_url')
 
         if not api_key:
             return jsonify({'error': 'Please enter your Gemini API key'}), 400
 
         rss_sources = []
-
         for journal_name in selected_journals:
             if journal_name in journal_dict:
                 rss_sources.append(journal_dict[journal_name])
@@ -280,8 +278,11 @@ def index():
                 return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
             rss_sources.append(custom_rss_url)
 
-        if not 1 <= len(rss_sources) <= 5:  # Enforce 1-5 sources
-            return jsonify({'error': 'Please select between 1 and 5 sources.'}), 400
+        # Enforce a maximum of 3 selected journals.
+        if len(rss_sources) > 3:
+            return jsonify({'error': 'Please select a maximum of 3 journals.'}), 400
+        if len(rss_sources) == 0:
+            return jsonify({'error': 'Please select at least 1 journal.'}), 400
 
         # Start background task
         thread = threading.Thread(target=run_analysis, args=(app, api_key, rss_sources))
@@ -289,7 +290,6 @@ def index():
 
         return jsonify({'status': 'analyzing'}), 202  # Return immediately
 
-    # If it's a GET request, or after processing, render the template.  Include the subtitle.
     return render_template('index.html', journal_dict=journal_dict,
                            subtitle=Markup("- Target: Top Journals in Communication<br>- Focus: Quantitative Studies"))
 
@@ -305,14 +305,13 @@ def results():
 @app.route('/about')
 def about():
     about_text = Markup("""
-        <p>A note from Emre Kızılkaya, the creator of this app:</p>
+        <p>Created by Emre Kızılkaya</p>
         <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers from top Communication journals during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings.</p>
         <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies rely on nuanced interpretations and contextual depth, which require full engagement with the text to fully appreciate their insights.</p>
+        <p>For Open-sourced under the MIT License, you can find all the files for this project at https://github.com/ekizilkaya/academic-summarizer</a></p>
         <p>For questions or feedback, feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a></p>
     """)
     return render_template('about.html', about_text=about_text)
-
-
 
 def run_analysis(app, api_key, rss_sources):
     with app.app_context():
@@ -343,6 +342,5 @@ def run_analysis(app, api_key, rss_sources):
         except Exception as e:
             results_queue.put(f"Error: {str(e)}")
 
-
 if __name__ == '__main__':
-    app.run(debug=True)  # IMPORTANT:  Set debug=False for production!
+    app.run(debug=True)
