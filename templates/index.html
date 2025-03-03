@@ -17,7 +17,7 @@
             margin-bottom: 5px;
         }
 
-        /* Corrected styles for result overflow */
+        /* Corrected styles for result overflow - NO overflow-x */
         #result {
             overflow-wrap: break-word;  /* Modern way to break long words */
             word-wrap: break-word;     /* For older browsers */
@@ -27,11 +27,11 @@
             padding: 10px;
             background-color: #f8f9fa;
             border-radius: 4px;
-            overflow-x: auto; /* THIS IS THE KEY */
+            /* REMOVED: overflow-x: auto;  <-- This was the mistake! */
         }
         #result pre {
-            display: block; /* was already correct*/
-            width: 100%;   /* was already correct */
+            display: block;
+            width: 100%;  /* Ensure <pre> respects container width */
         }
 
         /* Custom styles for journal selection */
