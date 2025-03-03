@@ -24,7 +24,6 @@ This application utilizes a large language model's (LLM) application programming
 *   **Custom RSS Feed Support:** Allows users to add RSS feeds from journals not included in the default list.
 *   **Error Handling:** Robust error handling for API issues, network problems, and invalid RSS feeds.
 *   **About Page:** Includes information about the app, its creator, and the rationale behind the focus on quantitative research.
-* **Polling Mechanism:** For a better user experience
 
 ## Why Quantitative Focus? 🎯
 
@@ -75,11 +74,12 @@ Quantitative research results are typically presented in structured formats (sta
 
 5.  **Use the Application:**
     *   Enter your Gemini API key in the provided field (if you didn't set it as an environment variable).
-    *   Select up to 5 journals from the list.
+    *   Select up to 3 journals from the list.
     *   Optionally, add a custom RSS URL.
     *   Click "Analyze Feed Contents".
     *   Wait for the analysis to complete (a spinner will indicate progress).
     *   View the summaries in the results area.
+    *   You can change and customize everything as you have all the codes and files, including the HTML templates.
 
 ## Included Journals 📰
 
