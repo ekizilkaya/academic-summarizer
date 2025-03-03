@@ -28,7 +28,7 @@
             background-color: #f8f9fa;
             border-radius: 4px;
         }
-        #result pre { /* THIS IS THE KEY ADDITION */
+        #result pre {
             display: block;
             width: 100%;  /* Ensure <pre> respects container width */
         }
@@ -85,6 +85,10 @@
         nav a:hover {
             text-decoration: underline;
         }
+        /* Copy Button Styling */
+        #copy-button {
+            margin-top: 10px;
+        }
 
     </style>
 </head>
@@ -131,6 +135,7 @@
         </div>
 
         <div id="result"></div>
+        <button id="copy-button" class="btn btn-secondary" style="display: none;">Copy to Clipboard</button>
     </div>
 
     <script>
@@ -139,6 +144,7 @@
         const resultDiv = document.getElementById('result');
         const journalOptions = document.querySelectorAll('.journal-option');
         const selectedJournalsInput = document.getElementById('selected-journals');
+        const copyButton = document.getElementById('copy-button'); // Get the copy button
         let selectedJournals = [];
 
         // Journal selection logic
@@ -163,6 +169,7 @@
             spinnerContainer.style.display = 'block';
             resultDiv.innerHTML = '';
             resultDiv.style.display = 'none';
+            copyButton.style.display = 'none'; // Hide copy button initially
 
             const formData = new FormData(form);
              //Remove the journals field, and replace with our comma separated string
@@ -184,6 +191,8 @@
                   const errorData = await response.json();
                   resultDiv.innerHTML = `<p style="color: red;">Error: ${errorData.error}</p>`;
                   resultDiv.style.display = 'block'; // Show result div with error
+                  copyButton.style.display = 'none'; // Ensure copy button is hidden on error
+
             }
         });
 
@@ -200,6 +209,7 @@
                 spinnerContainer.style.display = 'none';
                 resultDiv.innerHTML = `<p style="color: red;">Error: Failed to fetch results.</p>`;
                 resultDiv.style.display = 'block';
+                copyButton.style.display = 'none';// Ensure copy button is hidden on error
             }
         }
 
@@ -208,11 +218,28 @@
             if (data.result) {
               resultDiv.innerHTML = `<pre>${data.result}</pre>`;
               resultDiv.style.display = 'block';
+              copyButton.style.display = 'block'; // Show copy button
             } else {
                 resultDiv.innerHTML = '<p>No results found.</p>';
                 resultDiv.style.display = 'block';
+                copyButton.style.display = 'none'; // Hide copy button if no results
             }
         }
+
+        // Copy button functionality
+        copyButton.addEventListener('click', () => {
+            const textToCopy = resultDiv.innerText; // Get the text content (not HTML)
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    // Optionally, provide feedback to the user (e.g., change button text)
+                    copyButton.innerText = 'Copied!';
+                    setTimeout(() => { copyButton.innerText = 'Copy to Clipboard'; }, 2000); // Reset after 2 seconds
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy text. Please copy manually.'); // Fallback
+                });
+        });
     </script>
 </body>
 </html>
