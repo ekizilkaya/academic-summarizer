@@ -18,9 +18,12 @@
         }
         /* Style adjustments for the result area */
         #result {
-            white-space: pre-wrap;
-            word-wrap: break-word; /* Handles long words */
-            overflow-x: auto;  /* Adds horizontal scrolling if needed */
+            /* These are the KEY changes for responsiveness */
+            overflow-wrap: break-word;  /* Modern way to break long words */
+            word-wrap: break-word;     /* For older browsers */
+            white-space: pre-wrap;     /* Preserve line breaks AND wrap */
+            /* No overflow-x: auto; needed - let it wrap! */
+
             margin-top: 20px;
             border: 1px solid #ddd;
             padding: 10px;
