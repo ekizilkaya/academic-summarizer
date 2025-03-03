@@ -11,7 +11,7 @@
 - **Target:** Top Journals in Communication
 - **Focus:** Quantitative Studies
 
-This application utilizes a large language model (LLM) API (currently Gemini, as it is one of the most capable free LLMs available) to generate concise summaries of recent academic papers, focusing on quantitative findings. It is designed to help researchers stay up to date with the latest findings, particularly in quantitative research.
+This application utilizes a large language model's (LLM) application programming interface (API) [currently Gemini, as it is one of the most capable free LLMs available] to generate concise summaries of recent academic papers, focusing on quantitative findings. It is designed to help researchers stay up to date with the latest findings, particularly in quantitative research.
 
 ## Features ✨
 
