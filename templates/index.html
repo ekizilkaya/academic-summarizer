@@ -7,13 +7,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         :root {
-            --primary: #2c6bb1;
-            --secondary: #5a89c1;
-            --accent: #7d3c98;
-            --light: #f8f9fa;
-            --dark: #343a40;
-            --success: #28a745;
-            --card-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            --primary: #3f51b5;
+            --secondary: #ff4081;
+            --accent: #ff4081;
+            --light: #f5f7fa;
+            --dark: #212121;
+            --success: #4caf50;
+            --error: #f44336;
+            --card-shadow: 0 2px 5px rgba(0,0,0,0.1);
             --transition-speed: 0.3s;
         }
         
@@ -28,14 +29,15 @@
         
         /* Header styles */
         .hero-header {
-            background-image: linear-gradient(rgba(125, 60, 152, 0.8), rgba(125, 60, 152, 0.9)), url('/api/placeholder/1200/300');
+            background-image: linear-gradient(rgba(63, 81, 181, 0.9), rgba(63, 81, 181, 0.8)), url('/api/placeholder/1200/300');
             background-size: cover;
             background-position: center;
             color: white;
             padding: 2rem 0;
             margin-bottom: 1.5rem;
             text-align: center;
-            border-bottom: 5px solid var(--primary);
+            border-bottom: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             position: relative;
         }
         
@@ -77,7 +79,7 @@
         }
         
         .card-header {
-            background-color: var(--accent);
+            background-color: var(--primary);
             color: white;
             border-radius: 8px 8px 0 0 !important;
             font-weight: 600;
@@ -103,7 +105,7 @@
         
         .form-control:focus {
             border-color: var(--secondary);
-            box-shadow: 0 0 0 0.2rem rgba(90, 137, 193, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(255, 64, 129, 0.25);
         }
         
         .form-group label {
@@ -152,10 +154,10 @@
         }
         
         .journal-option.active {
-            background-color: var(--primary);
-            border-color: var(--primary);
+            background-color: var(--secondary);
+            border-color: var(--secondary);
             color: white;
-            box-shadow: 0 2px 8px rgba(44, 107, 177, 0.4);
+            box-shadow: 0 2px 5px rgba(255, 64, 129, 0.3);
         }
         
         .journal-option i {
@@ -165,22 +167,22 @@
         
         /* Button styles */
         .btn-primary {
-            background-color: var(--primary);
-            border-color: var(--primary);
+            background-color: var(--secondary);
+            border-color: var(--secondary);
             border-radius: 6px;
             padding: 0.6rem 1.5rem;
             font-weight: 600;
             letter-spacing: 0.5px;
-            box-shadow: 0 2px 4px rgba(44, 107, 177, 0.3);
+            box-shadow: 0 2px 5px rgba(255, 64, 129, 0.3);
             transition: all var(--transition-speed);
             width: 100%;
         }
         
         .btn-primary:hover {
-            background-color: #245a96;
-            border-color: #245a96;
+            background-color: #f50057;
+            border-color: #f50057;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(44, 107, 177, 0.4);
+            box-shadow: 0 4px 8px rgba(255, 64, 129, 0.4);
         }
         
         .btn-primary:active {
@@ -270,7 +272,7 @@
         }
         
         .copy-button:hover {
-            background-color: var(--secondary);
+            background-color: var(--primary);
             color: white;
         }
         
@@ -299,7 +301,7 @@
         }
         
         .footer a:hover {
-            color: var(--accent);
+            color: var(--secondary);
             text-decoration: underline;
         }
         
@@ -465,7 +467,7 @@
                 
                 // Show results card with error
                 resultsCard.style.display = 'block';
-                resultDiv.innerHTML = `<p style="color: red;"><i class="fas fa-exclamation-circle"></i> Error: ${errorData.error}</p>`;
+                resultDiv.innerHTML = `<p style="color: var(--error);"><i class="fas fa-exclamation-circle"></i> Error: ${errorData.error}</p>`;
                 copyButton.style.display = 'none';
             }
         });
@@ -484,7 +486,7 @@
                 
                 // Show results card with error
                 resultsCard.style.display = 'block';
-                resultDiv.innerHTML = `<p style="color: red;"><i class="fas fa-exclamation-circle"></i> Error: Failed to fetch results.</p>`;
+                resultDiv.innerHTML = `<p style="color: var(--error);"><i class="fas fa-exclamation-circle"></i> Error: Failed to fetch results.</p>`;
                 copyButton.style.display = 'none';
             }
         }
