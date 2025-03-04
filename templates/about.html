@@ -1,15 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>About</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="About our web application">
+    <title>About Us | {{ page_title|default('My Web App') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <!-- Add favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- Font Awesome for icons (optional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>About</h1>
-        {{ about_text }}
-        <p><a href="/">Back to Main Page</a></p>
-    </div>
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <a href="/">{{ app_name|default('My Web App') }}</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/about" class="active">About</a></li>
+                <li><a href="/contact">Contact</a></li>
+                {% if additional_links %}
+                    {% for link in additional_links %}
+                        <li><a href="{{ link.url }}">{{ link.name }}</a></li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="about-section">
+            <h1>About Us</h1>
+            <div class="about-content">
+                {{ about_text|safe }}
+            </div>
+            
+            <div class="team-section">
+                {% if team_members %}
+                    <h2>Our Team</h2>
+                    <div class="team-grid">
+                        {% for member in team_members %}
+                            <div class="team-member">
+                                {% if member.image %}
+                                    <img src="{{ url_for('static', filename='images/' + member.image) }}" alt="{{ member.name }}">
+                                {% endif %}
+                                <h3>{{ member.name }}</h3>
+                                <p class="role">{{ member.role }}</p>
+                                <p>{{ member.bio }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>{{ app_name|default('My Web App') }}</h3>
+                <p>&copy; {{ current_year|default('2025') }} All Rights Reserved</p>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/about">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Connect With Us</h3>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript (optional) -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
