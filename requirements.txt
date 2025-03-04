@@ -1,11 +1,7 @@
- ```
- Flask>=3.1
- gunicorn
- aiohttp
- beautifulsoup4
- lxml
- ttkbootstrap
- python-dotenv
- ```
-
- Make sure you have *all* the packages listed, including `python-dotenv`. The versions listed are good, modern versions; using older versions can sometimes cause problems.  If your `requirements.txt` already has these packages, just make sure `python-dotenv` is added.  If you have version numbers specified (e.g., `Flask==2.0.0`), and they are *older* than the versions I listed, consider updating them (but test thoroughly after updating).  If your existing versions are *newer*, that's generally fine.
+Flask>=3.1
+gunicorn
+aiohttp
+beautifulsoup4
+lxml
+ttkbootstrap
+python-dotenv
