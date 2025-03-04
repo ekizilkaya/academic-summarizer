@@ -309,7 +309,10 @@
                 padding-right: 2rem;
             }
         }
-          .pink-text { color: #ff4081; } /* Bootstrap's pink */
+        .pink-text { color: #ff4081; } /* Bootstrap's pink */
+        .journal-header { font-weight: bold; margin-top: 1em; }
+        .article { margin-bottom: 1em; padding-left: 1em; border-left: 3px solid #ddd; }
+
 
     </style>
 </head>
@@ -333,14 +336,14 @@
                     <div class="card-body">
                        <form id="analysisForm">
                             <div class="form-group">
-                                 <label for="api_key">Enter Your Gemini API Key <a href="/about" class="pink-text" style="text-decoration: none;" target="_blank">           How?</a></label>
+                                 <label for="api_key">Gemini API Key <a href="/about" class="pink-text" style="text-decoration: none;" target="_blank">How?</a></label>
                                 <input type="password" class="form-control" id="api_key" name="api_key" required>
-                                <small class="form-text text-muted">Your API key is securely used on your computer and is not stored on the server.</small>
+                                <small class="form-text text-muted">Your API key is used client-side and is not stored on the server.</small>
                             </div>
 
                             <!-- Journal Selection Card -->
                             <div class="form-group journal-group">
-                                <label><i class="fas fa-book"></i> Select Journals (Up to 3):</label>
+                                <label><i class="fas fa-book"></i> Select Journals (up to 3):</label>
                                 <div id="journal-options" class="journal-options">
                                     {% for journal, url in journal_dict.items() %}
                                     <div class="journal-option" data-value="{{ journal }}">
@@ -391,152 +394,151 @@
             <a href="/about"><i class="fas fa-info-circle"></i> About</a>
         </div>
     </footer>
-<script>
-    document.getElementById('analysisForm').addEventListener('submit', async function(event) {
-        event.preventDefault();
+    <script>
+        document.getElementById('analysisForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
 
-        const apiKey = document.getElementById('api_key').value;
-        const selectedJournals = Array.from(document.querySelectorAll('.journal-option.active')).map(el => el.dataset.value);
-        const customRssUrl = document.getElementById('custom_rss_url').value;
-          const selectedJournalsInput = document.getElementById('selected-journals');
-
-
-        if (!apiKey) {
-             Swal.fire({
-                icon: "error",
-                title: "Oops...",
-                text: "Please enter your Gemini API key."
-            });
-            return;
-        }
-
-        if (selectedJournals.length === 0 && !customRssUrl) {
-            Swal.fire({
-                icon: "error",
-                title: "Oops...",
-                text: "Please select at least one journal or provide a custom RSS URL."
-              });
-
-            return;
-        }
-
-        if (selectedJournals.length > 3) {
-          Swal.fire({
-                icon: "error",
-                title: "Oops...",
-                text: "Please select a maximum of 3 journals."
-              });
-          return;
-        }
-
-        // Store API key in sessionStorage
-        sessionStorage.setItem('gemini_api_key', apiKey);
-
-        // Construct FormData for the backend request (no API key here)
-        const formData = new FormData();
-        formData.append('journals', selectedJournals.join(','));
-
-        if (customRssUrl) {
-            formData.append('custom_rss_url', customRssUrl);
-        }
+            const apiKey = document.getElementById('api_key').value;
+            const selectedJournals = Array.from(document.querySelectorAll('.journal-option.active')).map(el => el.dataset.value);
+            const customRssUrl = document.getElementById('custom_rss_url').value;
+            const selectedJournalsInput = document.getElementById('selected-journals');
 
 
-        // Show loading indicator
-
-        document.getElementById('spinner-container').style.display = 'block';
-        document.getElementById('results-card').style.display = 'none'; // Hide previous results
-        document.getElementById('result').innerHTML = ''; // Clear previous results
-
-
-        try {
-            // Step 1:  Get the prompt from the backend
-            const backendResponse = await fetch('/', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!backendResponse.ok) {
-                const errorData = await backendResponse.json();
-                throw new Error(errorData.error || 'Backend error');
+            if (!apiKey) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Oops...",
+                    text: "Please enter your Gemini API key."
+                });
+                return;
             }
 
-            const { prompt, summary_data } = await backendResponse.json();
+            if (selectedJournals.length === 0 && !customRssUrl) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Oops...",
+                    text: "Please select at least one journal or provide a custom RSS URL."
+                  });
 
-          // Step 2: Make the Gemini API request (client-side)
-          const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { maxOutputTokens: 16384, temperature: 0.2 }
-              })
-          });
+                return;
+            }
 
-          if (!geminiResponse.ok) {
-              const errorText = await geminiResponse.text();
-              throw new Error(`Gemini API Error (${geminiResponse.status}): ${errorText}`);
-          }
+            if (selectedJournals.length > 3) {
+              Swal.fire({
+                    icon: "error",
+                    title: "Oops...",
+                    text: "Please select a maximum of 3 journals."
+                  });
+              return;
+            }
 
-          const geminiData = await geminiResponse.json();
-           let summaryText;
-          try {
-            summaryText = geminiData.candidates[0].content.parts[0].text.trim();
-          } catch (error) {
-            console.log(geminiData)
-            throw new Error(`Failed to parse Gemini API response`)
-          }
+            // Store API key in sessionStorage
+            sessionStorage.setItem('gemini_api_key', apiKey);
 
-            // Step 3:  Display formatted results
+            // Construct FormData for the backend request (no API key here)
+            const formData = new FormData();
+            formData.append('journals', selectedJournals.join(','));
 
-           document.getElementById('result').innerHTML = formatSummary(summaryText);
-            document.getElementById('results-card').style.display = 'block';
+            if (customRssUrl) {
+                formData.append('custom_rss_url', customRssUrl);
+            }
 
 
-        } catch (error) {
-            console.error('Error:', error);
-             Swal.fire({
-              icon: "error",
-              title: "Oops...",
-              text: error
-            });
+            // Show loading indicator
 
-        } finally {
-            // Hide loading indicator
-            document.getElementById('spinner-container').style.display = 'none';
-        }
-    });
-     // Journal selection logic with improved animation
-    const journalOptions = document.querySelectorAll('.journal-option');
-    let selectedJournals = [];
-     const selectedJournalsInput = document.getElementById('selected-journals');
+            document.getElementById('spinner-container').style.display = 'block';
+            document.getElementById('results-card').style.display = 'none'; // Hide previous results
+            document.getElementById('result').innerHTML = ''; // Clear previous results
 
 
-    journalOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            const journal = option.dataset.value;
-            if (selectedJournals.includes(journal)) {
-                selectedJournals = selectedJournals.filter(j => j !== journal);
-                option.classList.remove('active');
-                // Remove icon animation
-                const icon = option.querySelector('i');
-                icon.className = 'fas fa-journal-whills';
+            try {
+                // Step 1:  Get the prompt from the backend
+                const backendResponse = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
 
-            } else {
-                if (selectedJournals.length < 3) {
-                    selectedJournals.push(journal);
-                    option.classList.add('active');
-                     // Add icon animation for selection
-                    const icon = option.querySelector('i');
-                    icon.className = 'fas fa-check';
+                if (!backendResponse.ok) {
+                    const errorData = await backendResponse.json();
+                    throw new Error(errorData.error || 'Backend error');
                 }
-            }
-              selectedJournalsInput.value = selectedJournals.join(',');
-        });
-    });
 
-     // Helper function to format the summary text
+                const { prompt, summary_data } = await backendResponse.json();
+
+              // Step 2: Make the Gemini API request (client-side)
+              const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      contents: [{ parts: [{ text: prompt }] }],
+                      generationConfig: { maxOutputTokens: 16384, temperature: 0.2 }
+                  })
+              });
+
+              if (!geminiResponse.ok) {
+                  const errorText = await geminiResponse.text();
+                  throw new Error(`Gemini API Error (${geminiResponse.status}): ${errorText}`);
+              }
+
+              const geminiData = await geminiResponse.json();
+               let summaryText;
+              try {
+                summaryText = geminiData.candidates[0].content.parts[0].text.trim();
+              } catch (error) {
+                console.log(geminiData)
+                throw new Error(`Failed to parse Gemini API response`)
+              }
+
+                // Step 3:  Display formatted results
+
+               document.getElementById('result').innerHTML = formatSummary(summaryText);
+                document.getElementById('results-card').style.display = 'block';
+
+
+            } catch (error) {
+                console.error('Error:', error);
+                 Swal.fire({
+                  icon: "error",
+                  title: "Oops...",
+                  text: error
+                });
+
+            } finally {
+                // Hide loading indicator
+                document.getElementById('spinner-container').style.display = 'none';
+            }
+        });
+         // Journal selection logic with improved animation
+        const journalOptions = document.querySelectorAll('.journal-option');
+        let selectedJournals = [];
+         const selectedJournalsInput = document.getElementById('selected-journals');
+
+
+        journalOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const journal = option.dataset.value;
+                if (selectedJournals.includes(journal)) {
+                    selectedJournals = selectedJournals.filter(j => j !== journal);
+                    option.classList.remove('active');
+                    // Remove icon animation
+                    const icon = option.querySelector('i');
+                    icon.className = 'fas fa-journal-whills';
+
+                } else {
+                    if (selectedJournals.length < 3) {
+                        selectedJournals.push(journal);
+                        option.classList.add('active');
+                         // Add icon animation for selection
+                        const icon = option.querySelector('i');
+                        icon.className = 'fas fa-check';
+                    }
+                }
+                  selectedJournalsInput.value = selectedJournals.join(',');
+            });
+        });
+
     function formatSummary(summaryText) {
         const lines = summaryText.split('\n');
         let formattedHtml = '';
@@ -551,10 +553,23 @@
                 currentJournal = line.replace(/\*/g, '').trim();
                 formattedHtml += `<div class="journal-header"><strong>${currentJournal}</strong></div><div class="journal-articles">`;
             } else if (line.trim().match(/^\d+\./)) {
-               // Article entry, including the full line
-                formattedHtml += `<div class="article">${line.trim()}</div>`;
-            }  else if (line.trim() !== '') {
-                // Other lines (within an article),  ensure they are paragraphs.
+               // Article entry:  Extract title, authors, year
+                const match = line.trim().match(/^\d+\.\s*"(.*?)"\s*by\s*(.*?)\s*\((\d+)\)/);  // Regex to match the pattern
+                if (match) {
+                    const title = match[1];
+                    const authors = match[2];
+                    const year = match[3];
+                    formattedHtml += `<div class="article">
+                                        <p><em>${title}</em> by ${authors} (${year})</p>`;
+                } else {
+                    // Fallback: just add the line as a paragraph if it doesn't match.
+                    formattedHtml += `<div class="article"><p>${line.trim()}</p></div>`;
+                }
+            } else if (line.trim().toLowerCase().startsWith('key findings:')) {
+                // Key findings: Bold the "Key findings:" part.
+                formattedHtml += `<p><strong>${line.trim().substring(0, 12)}</strong>${line.trim().substring(12)}</p>`;
+            } else if (line.trim() !== '') {
+                // Other lines (within an article), ensure they are paragraphs.
                 formattedHtml += `<p>${line.trim()}</p>`;
             }
         }
@@ -565,6 +580,6 @@
 
         return formattedHtml;
     }
-</script>
+    </script>
 </body>
 </html>

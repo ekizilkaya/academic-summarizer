@@ -1,318 +1,570 @@
-#!/usr/bin/env python3
-import locale
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Academic Journal Summarizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- Add SweetAlert -->
+    <style>
+        :root {
+            --primary: #3f51b5;
+            --secondary: #ff4081;
+            --accent: #ff4081;
+            --light: #f5f7fa;
+            --dark: #212121;
+            --success: #4caf50;
+            --error: #f44336;
+            --card-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --transition-speed: 0.3s;
+        }
 
-# Monkey-patch locale.setlocale (remains unchanged)
-_old_setlocale = locale.setlocale
-def safe_setlocale(category, loc=None):
-    if loc == "":
-        loc = "C"
-    return _old_setlocale(category, loc)
-locale.setlocale = safe_setlocale
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
 
-import asyncio
-import aiohttp
-from bs4 import BeautifulSoup
-import re
-import json
-from datetime import datetime
-from typing import List, Dict, Tuple
-from flask import Flask, render_template, request, jsonify
-from markupsafe import Markup
+        /* Header styles */
+        .hero-header {
+            background-image: linear-gradient(rgba(63, 81, 181, 0.9), rgba(63, 81, 181, 0.8)), url('/api/placeholder/1200/300');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-bottom: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
 
+        .hero-header h1 {
+            font-weight: 700;
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-app = Flask(__name__)
-app.secret_key = '***REMOVED***'  # IMPORTANT: Change this!
-
-# --- Helper functions (mostly unchanged, see modifications below) ---
-
-async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -> List[Dict]:
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        async with session_aiohttp.get(url, timeout=30, headers=headers) as response:
-            if response.status != 200:
-                return []
-            xml = await response.text()
-            try:
-                soup = BeautifulSoup(xml, 'lxml')
-            except Exception:
-                try:
-                    soup = BeautifulSoup(xml, 'xml')
-                except Exception:
-                    try:
-                        soup = BeautifulSoup(xml, 'html.parser')
-                    except Exception:
-                        return []
-
-            feed_title = None
-            channel = soup.find('channel')
-            if channel:
-                feed_title_elem = channel.find('title')
-                if feed_title_elem:
-                    feed_title = feed_title_elem.text.strip()
-            if not feed_title:
-                feed_title_elem = soup.find('title')
-                if feed_title_elem:
-                    feed_title = feed_title_elem.text.strip()
-
-            articles = soup.find_all(['item', 'entry'])
-            if not articles:
-                articles = soup.find_all(['article', 'content'])
-            if not articles:
-                return []
-
-            journal_articles = []
-            for article in articles:
-                title_elem = article.find(['title', 'dc:title']) or article.title
-                title = title_elem.text if title_elem else "No title available"
-
-                description_elem = (
-                        article.find(['description', 'summary', 'dc:description', 'abstract']) or article.description)
-                abstract = description_elem.text if description_elem else ""
-
-                if abstract and ('<' in abstract and '>' in abstract):
-                    abstract_soup = BeautifulSoup(abstract, 'html.parser')
-                    abstract = abstract_soup.get_text(separator=' ', strip=True)
-
-                authors = article.find_all(['author', 'dc:creator', 'creator'])
-                author_list = [author.text for author in authors if author.text]
-                if not author_list and abstract:
-                    author_patterns = [
-                        r'by\s+([\w\s,\.]+)(?:$$|\d|$)',
-                        r'authors?[:;]\s*([\w\s,\.]+)',
-                        r'^([\w\s,\.]+?),\s+\d{4}',
-                    ]
-                    for pattern in author_patterns:
-                        matches = re.search(pattern, abstract, re.IGNORECASE)
-                        if matches:
-                            potential_authors = matches.group(1).strip()
-                            if len(potential_authors.split()) < 10:
-                                author_list = [potential_authors]
-                                break
-                authors_text = ", ".join(author_list) if author_list else "Unknown Author"
-
-                pub_date = (article.find(['pubDate', 'published', 'dc:date']) or article.pubDate)
-                pub_date = pub_date.text if pub_date else ""
-
-                year = ""
-                if pub_date:
-                    year_match = re.search(r'(20\d\d)', pub_date)
-                    if year_match:
-                        year = year_match.group(1)
-                if not year and abstract:
-                    year_match = re.search(r'(20\d\d)', abstract)
-                    if year_match:
-                        year = year_match.group(1)
-
-                journal_name = feed_title if feed_title else "Unknown Journal"
-                journal_name = re.sub(r'RSS Feed$|Feed$|RSS$', '', journal_name).strip()
-
-                numbers_found = extract_numbers(abstract)
-                importance_score = len(numbers_found) * 2
-                stat_terms = ['significant', 'correlation', 'regression', 'coefficient', 'p-value',
-                              'standard deviation']
-                for term in stat_terms:
-                    if term in abstract.lower():
-                        importance_score += 2
-                if len(abstract) > 300 and numbers_found:
-                    importance_score += 3
-
-                journal_articles.append({
-                    'title': title,
-                    'abstract': abstract,
-                    'journal': journal_name,
-                    'authors': authors_text,
-                    'published': pub_date,
-                    'year': year,
-                    'importance_score': importance_score,
-                    'quantitative_data': numbers_found,
-                    'source_url': url
-                })
-            return journal_articles
-    except Exception as e:
-        print(f"Error fetching {url}: {e}")
-        return []
-
-def extract_numbers(text: str) -> List[str]:
-    pattern = r'\d+(?:.\d+)?%?|\bp\s*<\s0.\d+|\br\s=\s*0.\d+'
-    return re.findall(pattern, text)
-
-async def preprocess_articles(articles: List[Dict]) -> List[Dict]:
-    quantitative_articles = [article for article in articles
-                             if article['quantitative_data'] and article['abstract']]
-    quantitative_articles.sort(key=lambda x: x['importance_score'], reverse=True)
-    return quantitative_articles
-
-
-async def format_articles_for_prompt(articles: List[Dict]) -> str:
-    """Formats articles for the Gemini API prompt (moved from summarize_articles)."""
-    if not articles:
-        return "No articles found to summarize."
-
-    articles_by_journal = {}
-    for article in articles:
-        journal = article['journal']
-        articles_by_journal.setdefault(journal, []).append(article)
-
-    articles_by_journal = {journal: arts for journal, arts in articles_by_journal.items()
-                           if any(article['quantitative_data'] for article in arts)}
-
-    for journal in articles_by_journal:
-        articles_by_journal[journal].sort(key=lambda x: x['importance_score'], reverse=True)
-        articles_by_journal[journal] = articles_by_journal[journal][:3]
-
-    formatted_articles = ""
-    for journal, journal_articles in articles_by_journal.items():
-        formatted_articles += f"\n{journal}\n"
-        for article in journal_articles:
-            formatted_articles += f"\nTitle: {article['title']}\n"
-            formatted_articles += f"Authors: {article['authors']}\n"
-            formatted_articles += f"Year: {article.get('year', 'Unknown')}\n"
-            formatted_articles += f"Abstract: {article['abstract']}\n"
-            formatted_articles += f"Quantitative data found: {', '.join(article['quantitative_data'])}\n"
-            formatted_articles += f"Published: {article['published']}\n"
-            formatted_articles += "-" * 50 + "\n"
-
-    return formatted_articles
-
-
-
-# --- Flask Routes ---
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    journal_dict = {
-        "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
-        "Social Media + Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=smsa&type=etoc&feed=rss",
-        "Journalism": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=joua&type=axatoc&feed=rss",
-        "Communication Methods and Measures": "https://www.tandfonline.com/feed/rss/hcms20",
-        "Communication Research": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=crxa&type=axatoc&feed=rss",
-        "International Journal of Press/Politics": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=hijb&type=axatoc&feed=rss",
-        "Internet Research": "https://www.emerald.com/insight/rss/1066-2243/latest",
-        "Big Data and Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=bdsa&type=etoc&feed=rss",
-        "Media, Culture & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=mcsa&type=axatoc&feed=rss",
-        "International Journal of Communication": "https://ijoc.org/index.php/ijoc/gateway/plugin/WebFeedGatewayPlugin/rss2"
-    }
-
-    if request.method == 'POST':
-        # Get the comma-separated string and split it into a list
-        selected_journals_str = request.form.get('journals')
-        selected_journals = selected_journals_str.split(',') if selected_journals_str else []
-        custom_rss_url = request.form.get('custom_rss_url')
-
-        rss_sources = []
-        for journal_name in selected_journals:
-            journal_name = journal_name.strip()  # Remove leading/trailing spaces
-            if journal_name in journal_dict:
-                rss_sources.append(journal_dict[journal_name])
-
-        if custom_rss_url:
-            if not custom_rss_url.startswith(('http://', 'https://')):
-                return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
-            rss_sources.append(custom_rss_url)
-
-        # Enforce a maximum of 3 selected journals.
-        if len(rss_sources) > 3:
-            return jsonify({'error': 'Please select a maximum of 3 journals.'}), 400
-        if len(rss_sources) == 0:
-            return jsonify({'error': 'Please select at least 1 journal.'}), 400
-        
-        async def fetch_and_preprocess():
-          async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session_aiohttp:
-            tasks = [fetch_academic_rss(url, session_aiohttp) for url in rss_sources]
-            all_articles = await asyncio.gather(*tasks)
-            flattened_articles = [item for sublist in all_articles for item in sublist]
-            if not flattened_articles:
-                return "No articles found in the provided RSS feeds."
-            
-            quantitative_articles = await preprocess_articles(flattened_articles)
-            if not quantitative_articles:
-                return "No articles with quantitative data found."
-
-            formatted_articles_str = await format_articles_for_prompt(quantitative_articles)
-
-            # Prepare prompt and summary data (like in the original summarize_articles)
-            prompt = """
-            Analyze these academic articles and create a detailed summary following these rules:
-
-            1. Include the top 3 most important articles from EACH journal provided (or fewer if less than 3 are available)
-            2. For each article:
-            - Focus primarily on quantitative findings (numbers, percentages, statistical values)
-            - Extract the exact numerical results and their context
-            - Include a brief conclusion about what these numbers mean (1-2 sentences)
-
-            Format the output exactly as follows:
-
-            **JOURNAL NAME**
-            -------------
-            1. "Article Title" by Author Names (Year)
-            Key findings: [Specific numerical findings with exact numbers, percentages, p-values]
-            [Include 1-2 sentences explaining what these numbers mean as a conclusion]
-
-            2. [Next article...]
-            3. [Next article...]
-
-            Important: Include EVERY journal provided, even if it only has 1-2 articles with quantitative data.
-            If a journal has fewer than 3 articles with quantitative data, explicitly state: "This journal did not contain a third article with substantial quantitative findings."
-
-            Articles to analyze:
-            {articles}
-            """
-            prompt = prompt.format(articles=formatted_articles_str)
-
-            summary_data = {
-                'date': datetime.now().strftime('%Y-%m-%d'),
-                'journals': {},
-                'total_articles_processed': len(quantitative_articles),
-                'total_journals_processed': len({article['journal'] for article in quantitative_articles})
+        @media (max-width: 576px) {
+            .hero-header h1 {
+                font-size: 1.8rem;
             }
-            for article in quantitative_articles:
-                journal = article['journal']
-                if journal not in summary_data['journals']:
-                  summary_data['journals'][journal] = {
-                    'article_count': 0,
-                    'article_titles': []
-                  }
-                summary_data['journals'][journal]['article_count'] += 1
-                summary_data['journals'][journal]['article_titles'].append(article['title'])
+            .hero-header {
+                padding: 1.5rem 0;
+            }
+        }
+
+        .hero-header p {
+            font-size: 1.1rem;
+            max-width: 90%;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+
+        /* Card styles */
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            background-color: var(--primary);
+            color: white;
+            border-radius: 8px 8px 0 0 !important;
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 1rem 1.25rem;
+        }
+
+        .card-header i {
+            margin-right: 0.5rem;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        /* Form elements */
+        .form-control {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            padding: 0.75rem 1rem;
+            transition: all var(--transition-speed);
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 0.2rem rgba(255, 64, 129, 0.25);
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Journal selection */
+        .journal-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .journal-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .journal-option {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 0.8rem;
+            border-radius: 50px;
+            background-color: white;
+            border: 2px solid #e9ecef;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        @media (max-width: 576px) {
+            .journal-option {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        .journal-option:hover {
+            border-color: var(--secondary);
+            background-color: #f8f9fa;
+        }
+
+        .journal-option.active {
+            background-color: var(--secondary);
+            border-color: var(--secondary);
+            color: white;
+            box-shadow: 0 2px 5px rgba(255, 64, 129, 0.3);
+        }
+
+        .journal-option i {
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        /* Button styles */
+        .btn-primary {
+            background-color: var(--secondary);
+            border-color: var(--secondary);
+            border-radius: 6px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(255, 64, 129, 0.3);
+            transition: all var(--transition-speed);
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: #f50057;
+            border-color: #f50057;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 64, 129, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Spinner styles */
+        .spinner-container {
+            display: none; /* Initially hidden */
+            margin: 2rem auto;
+            text-align: center;
+        }
+
+        .spinner-text {
+            margin-top: 1rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+       .loading-spinner { /* Add a loading spinner */
+          border: 4px solid rgba(0, 0, 0, 0.1);
+          border-left-color: #0d6efd; /* Or your preferred color */
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+          display: inline-block;
+          margin-right: 5px;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* Results section */
+        .results-card {
+             margin-top: 20px; white-space: pre-wrap;
+            display: none; /* Initially hidden */
+        }
 
 
+        .results-content {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            padding: 1.25rem;
+            background-color: white;
+              margin-top: 20px; white-space: pre-wrap; /* Preserve formatting */
+        }
 
-            return jsonify({'status': 'ready', 'prompt': prompt, 'summary_data': summary_data})
+        .results-content pre {
+            display: block;
+            width: 100%;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #333;
+        }
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(fetch_and_preprocess())
-        loop.close()
+        @media (max-width: 576px) {
+            .results-content pre {
+                font-size: 0.8rem;
+            }
+        }
 
-        return result  # Return prompt and summary_data to the frontend
+        /* Copy button styling */
+        .copy-button {
+            display: none;
+            margin-top: 1rem;
+            border-radius: 6px;
+            background-color: var(--light);
+            color: var(--dark);
+            transition: all var(--transition-speed);
+            width: 100%;
+        }
+
+        .copy-button:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        /* Footer styles */
+        .footer {
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            color: #6c757d;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color var(--transition-speed);
+        }
+
+        .footer a:hover {
+            color: var(--secondary);
+            text-decoration: underline;
+        }
+
+        /* Container adjustments for mobile */
+        .container-fluid {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .container-fluid {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+        }
+          .pink-text { color: #ff4081; } /* Bootstrap's pink */
+
+    </style>
+</head>
+<body>
+    <!-- Hero Header -->
+    <header class="hero-header">
+        <div class="container-fluid">
+            <h1>Academic Journal Summarizer</h1>
+            <p>{{ subtitle | safe }}</p>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-10 offset-lg-1">
+                <!-- API Key Card -->
+                <div class="card fade-in">
+                    <div class="card-header">
+                         <i class="fas fa-key"></i> AI-Powered Search
+                    </div>
+                    <div class="card-body">
+                       <form id="analysisForm">
+                            <div class="form-group">
+                                 <label for="api_key">Gemini API Key <a href="/about" class="pink-text" style="text-decoration: none;" target="_blank">How?</a></label>
+                                <input type="password" class="form-control" id="api_key" name="api_key" required>
+                                <small class="form-text text-muted">Your API key is used client-side and is not stored on the server.</small>
+                            </div>
+
+                            <!-- Journal Selection Card -->
+                            <div class="form-group journal-group">
+                                <label><i class="fas fa-book"></i> Select Journals (up to 3):</label>
+                                <div id="journal-options" class="journal-options">
+                                    {% for journal, url in journal_dict.items() %}
+                                    <div class="journal-option" data-value="{{ journal }}">
+                                        <i class="fas fa-journal-whills"></i> {{ journal }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <!-- Hidden input to store selected journals -->
+                                <input type="hidden" name="journals" id="selected-journals">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="custom_rss_url"><i class="fas fa-rss"></i> Custom RSS URL (Optional):</label>
+                                <input type="text" class="form-control" id="custom_rss_url" name="custom_rss_url"
+                                    placeholder="https://example.com/journal/rss">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Analyze Feed Contents
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+               <!-- Loading Spinner -->
+                <div class="spinner-container" id="spinner-container">
+                    <span class="loading-spinner"></span>
+                    <p class="spinner-text">Analyzing academic journals... Please wait.</p>
+                </div>
+
+                <!-- Results Card -->
+                <div class="card results-card" id="results-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i> Analysis Results
+                    </div>
+                    <div class="card-body">
+                        <!-- Results content -->
+                        <div class="results-content" id="result"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer with About link -->
+    <footer class="footer">
+        <div class="container-fluid">
+            <a href="/about"><i class="fas fa-info-circle"></i> About</a>
+        </div>
+    </footer>
+<script>
+    document.getElementById('analysisForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const apiKey = document.getElementById('api_key').value;
+        const selectedJournals = Array.from(document.querySelectorAll('.journal-option.active')).map(el => el.dataset.value);
+        const customRssUrl = document.getElementById('custom_rss_url').value;
+          const selectedJournalsInput = document.getElementById('selected-journals');
 
 
-    return render_template('index.html', journal_dict=journal_dict,
-                           subtitle=Markup("- Target: Top Journals in Communication<br>- Focus: Quantitative Studies"))
+        if (!apiKey) {
+             Swal.fire({
+                icon: "error",
+                title: "Oops...",
+                text: "Please enter your Gemini API key."
+            });
+            return;
+        }
+
+        if (selectedJournals.length === 0 && !customRssUrl) {
+            Swal.fire({
+                icon: "error",
+                title: "Oops...",
+                text: "Please select at least one journal or provide a custom RSS URL."
+              });
+
+            return;
+        }
+
+        if (selectedJournals.length > 3) {
+          Swal.fire({
+                icon: "error",
+                title: "Oops...",
+                text: "Please select a maximum of 3 journals."
+              });
+          return;
+        }
+
+        // Store API key in sessionStorage
+        sessionStorage.setItem('gemini_api_key', apiKey);
+
+        // Construct FormData for the backend request (no API key here)
+        const formData = new FormData();
+        formData.append('journals', selectedJournals.join(','));
+
+        if (customRssUrl) {
+            formData.append('custom_rss_url', customRssUrl);
+        }
 
 
-@app.route('/about')
-def about():
-    about_text = Markup("""
-    <p>Created by <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a></p>
-    <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings in the abstractss from a number of top journals in the field of Communication, using their publicly available RSS feeds. You can also analyze any journal in any other field of study by simply typing the link to its RSS feed.</p>
-    <p>This application uses a large language model (LLM) API—currently Gemini 2.0 Flash, chosen for its high rate limits and strong performance among free LLMs—to generate concise summaries of recent academic papers. It is designed to help researchers stay up to date with the latest developments.</p>
-    <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies are harder to summarize as they rely more on nuanced interpretations and contextual depth, which usually require full engagement with the text to fully appreciate their insights.</p>
+        // Show loading indicator
 
-    <p><strong>Your API Key Security:</strong> Your Gemini API key is <strong>not</strong> sent to our servers.  It is used directly within your web browser (client-side) to communicate with the Gemini API.  This ensures your key remains secure and under your control. Keep your API key secret. Do not share it with others or commit it to public code repositories.</p>
+        document.getElementById('spinner-container').style.display = 'block';
+        document.getElementById('results-card').style.display = 'none'; // Hide previous results
+        document.getElementById('result').innerHTML = ''; // Clear previous results
 
-    <p><strong>How to Get a Gemini API Key:</strong>  You can obtain a free Gemini API key by following these steps:</p>
-    <ol>
-        <li>Go to <a href="https://ai.google.dev/" target="_blank">Google AI Studio</a>.</li>
-        <li>Click on "Get API Key".</li>
-        <li>Follow the instructions to create a new project or use an existing Google Cloud project.</li>
-        <li>Once your project is set up, you can generate an API key.</li>
-    </ol>
 
-    <p>Open-sourced under the MIT License, you can find all the files for this hobby project at <a href="https://github.com/ekizilkaya/academic-summarizer" target="_blank">GitHub repository</a>.</p>
-    <p>For questions or feedback, feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a></p>
-    """)
-    return render_template('about.html', about_text=about_text)
+        try {
+            // Step 1:  Get the prompt from the backend
+            const backendResponse = await fetch('/', {
+                method: 'POST',
+                body: formData
+            });
 
-if __name__ == '__main__':
-    app.run(debug=True)
+            if (!backendResponse.ok) {
+                const errorData = await backendResponse.json();
+                throw new Error(errorData.error || 'Backend error');
+            }
+
+            const { prompt, summary_data } = await backendResponse.json();
+
+          // Step 2: Make the Gemini API request (client-side)
+          const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { maxOutputTokens: 16384, temperature: 0.2 }
+              })
+          });
+
+          if (!geminiResponse.ok) {
+              const errorText = await geminiResponse.text();
+              throw new Error(`Gemini API Error (${geminiResponse.status}): ${errorText}`);
+          }
+
+          const geminiData = await geminiResponse.json();
+           let summaryText;
+          try {
+            summaryText = geminiData.candidates[0].content.parts[0].text.trim();
+          } catch (error) {
+            console.log(geminiData)
+            throw new Error(`Failed to parse Gemini API response`)
+          }
+
+            // Step 3:  Display formatted results
+
+           document.getElementById('result').innerHTML = formatSummary(summaryText);
+            document.getElementById('results-card').style.display = 'block';
+
+
+        } catch (error) {
+            console.error('Error:', error);
+             Swal.fire({
+              icon: "error",
+              title: "Oops...",
+              text: error
+            });
+
+        } finally {
+            // Hide loading indicator
+            document.getElementById('spinner-container').style.display = 'none';
+        }
+    });
+     // Journal selection logic with improved animation
+    const journalOptions = document.querySelectorAll('.journal-option');
+    let selectedJournals = [];
+     const selectedJournalsInput = document.getElementById('selected-journals');
+
+
+    journalOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const journal = option.dataset.value;
+            if (selectedJournals.includes(journal)) {
+                selectedJournals = selectedJournals.filter(j => j !== journal);
+                option.classList.remove('active');
+                // Remove icon animation
+                const icon = option.querySelector('i');
+                icon.className = 'fas fa-journal-whills';
+
+            } else {
+                if (selectedJournals.length < 3) {
+                    selectedJournals.push(journal);
+                    option.classList.add('active');
+                     // Add icon animation for selection
+                    const icon = option.querySelector('i');
+                    icon.className = 'fas fa-check';
+                }
+            }
+              selectedJournalsInput.value = selectedJournals.join(',');
+        });
+    });
+
+     // Helper function to format the summary text
+    function formatSummary(summaryText) {
+        const lines = summaryText.split('\n');
+        let formattedHtml = '';
+        let currentJournal = '';
+
+        for (const line of lines) {
+            if (line.startsWith('**')) {
+                // Journal header
+                if (currentJournal !== '') {
+                    formattedHtml += '</div>'; // Close previous journal div
+                }
+                currentJournal = line.replace(/\*/g, '').trim();
+                formattedHtml += `<div class="journal-header"><strong>${currentJournal}</strong></div><div class="journal-articles">`;
+            } else if (line.trim().match(/^\d+\./)) {
+               // Article entry, including the full line
+                formattedHtml += `<div class="article">${line.trim()}</div>`;
+            }  else if (line.trim() !== '') {
+                // Other lines (within an article),  ensure they are paragraphs.
+                formattedHtml += `<p>${line.trim()}</p>`;
+            }
+        }
+        // Close any open journal div
+        if (currentJournal !== '') {
+            formattedHtml += '</div>';
+        }
+
+        return formattedHtml;
+    }
+</script>
+</body>
+</html>
