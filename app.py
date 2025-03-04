@@ -298,6 +298,17 @@ def about():
     <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers from top Communication journals during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings.</p>
     <p>This application uses a large language model (LLM) API—currently Gemini 2.0 Flash, chosen for its high rate limits and strong performance among free LLMs—to generate concise summaries of recent academic papers, with a focus on quantitative findings. It is designed to help researchers stay up to date with the latest developments, particularly in quantitative research.</p>
     <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies rely on nuanced interpretations and contextual depth, which require full engagement with the text to fully appreciate their insights.</p>
+
+    <p><strong>Your API Key Security:</strong> Your Gemini API key is <strong>not</strong> sent to our servers.  It is used directly within your web browser (client-side) to communicate with the Gemini API.  This ensures your key remains secure and under your control. Keep your API key secret. Do not share it with others or commit it to public code repositories.</p>
+
+    <p><strong>How to Get a Gemini API Key:</strong>  You can obtain a free Gemini API key by following these steps:</p>
+    <ol>
+        <li>Go to <a href="https://ai.google.dev/" target="_blank">Google AI Studio</a>.</li>
+        <li>Click on "Get API Key".</li>
+        <li>Follow the instructions to create a new project or use an existing Google Cloud project.</li>
+        <li>Once your project is set up, you can generate an API key.</li>
+    </ol>
+
     <p>Open-sourced under the MIT License, you can find all the files for this hobby project at <a href="https://github.com/ekizilkaya/academic-summarizer" target="_blank">GitHub repository</a>.</p>
     <p>For questions or feedback, feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a></p>
     """)
