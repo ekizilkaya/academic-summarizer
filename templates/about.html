@@ -3,87 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About our web application">
-    <title>About Us | {{ page_title|default('My Web App') }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Add favicon -->
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <!-- Font Awesome for icons (optional) -->
+    <title>About | Academic Summarizer</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+        .container {
+            max-width: 960px;
+        }
+        .jumbotron {
+            background-color: #e9ecef;
+            padding: 2rem 1rem;
+            margin-bottom: 2rem;
+            border-radius: 0.3rem;
+        }
+        .lead {
+            font-size: 1.25rem;
+            font-weight: 300;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .list-group-item {
+            border: none;
+            padding: 0.75rem 0;
+        }
+        .social-icons a {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            color: #007bff;  /* Bootstrap primary color */
+            transition: color 0.3s ease;
+        }
+        .social-icons a:hover {
+            color: #0056b3; /* Darker shade on hover */
+            text-decoration: none; /* Remove underline on hover */
+        }
+        .footer {
+          margin-top: 2rem;
+          text-align: center;
+          color: grey;
+        }
+
+    </style>
 </head>
 <body>
-    <header>
-        <nav class="navbar">
-            <div class="logo">
-                <a href="/">{{ app_name|default('My Web App') }}</a>
-            </div>
-            <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li><a href="/about" class="active">About</a></li>
-                <li><a href="/contact">Contact</a></li>
-                {% if additional_links %}
-                    {% for link in additional_links %}
-                        <li><a href="{{ link.url }}">{{ link.name }}</a></li>
-                    {% endfor %}
-                {% endif %}
-            </ul>
-        </nav>
-    </header>
-
-    <main class="container">
-        <section class="about-section">
-            <h1>About Us</h1>
-            <div class="about-content">
-                {{ about_text|safe }}
-            </div>
-            
-            <div class="team-section">
-                {% if team_members %}
-                    <h2>Our Team</h2>
-                    <div class="team-grid">
-                        {% for member in team_members %}
-                            <div class="team-member">
-                                {% if member.image %}
-                                    <img src="{{ url_for('static', filename='images/' + member.image) }}" alt="{{ member.name }}">
-                                {% endif %}
-                                <h3>{{ member.name }}</h3>
-                                <p class="role">{{ member.role }}</p>
-                                <p>{{ member.bio }}</p>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>{{ app_name|default('My Web App') }}</h3>
-                <p>&copy; {{ current_year|default('2025') }} All Rights Reserved</p>
-            </div>
-            <div class="footer-section">
-                <h3>Quick Links</h3>
-                <ul>
-                    <li><a href="/">Home</a></li>
-                    <li><a href="/about">About</a></li>
-                    <li><a href="/contact">Contact</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h3>Connect With Us</h3>
-                <div class="social-icons">
-                    <a href="#"><i class="fab fa-twitter"></i></a>
-                    <a href="#"><i class="fab fa-facebook"></i></a>
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-linkedin"></i></a>
-                </div>
-            </div>
+    <div class="container">
+        <div class="jumbotron mt-4">
+            <h1 class="display-4">About Academic Summarizer</h1>
+            <p class="lead">Learn more about this project and how it works.</p>
+            <hr class="my-4">
+             <a class="btn btn-primary btn-lg" href="/" role="button">Back to Summarizer</a>
         </div>
-    </footer>
 
-    <!-- JavaScript (optional) -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-body">
+                       {{ about_text | safe }}
+                    </div>
+                </div>
+
+
+                <div class="mt-4">
+                    <h4>Connect With Me</h4>
+                     <div class="social-icons">
+                        <a href="https://www.linkedin.com/in/emre-kizilkaya" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                        <a href="https://bsky.app/profile/emrekizilkaya.bsky.social" target="_blank" aria-label="Bluesky"><i class="fab fa-square"></i></a> <!-- Placeholder icon, Bluesky doesn't have a standard one in Font Awesome -->
+                    </div>
+                </div>
+                </div>
+        </div>
+      <footer class="footer">
+          <p>©  <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a></p>
+      </footer>
+    </div>
 </body>
 </html>
