@@ -336,14 +336,14 @@
                     <div class="card-body">
                        <form id="analysisForm">
                             <div class="form-group">
-                                 <label for="api_key">Gemini API Key <a href="/about" class="pink-text" style="text-decoration: none;" target="_blank">How?</a></label>
+                                 <label for="api_key">Enter Your Gemini API Key <a href="/about" class="pink-text" style="text-decoration: none;" target="_blank">How?</a></label>
                                 <input type="password" class="form-control" id="api_key" name="api_key" required>
                                 <small class="form-text text-muted">Your API key is used client-side and is not stored on the server.</small>
                             </div>
 
                             <!-- Journal Selection Card -->
                             <div class="form-group journal-group">
-                                <label><i class="fas fa-book"></i> Select Journals (up to 3):</label>
+                                <label><i class="fas fa-book"></i> Select Journals (Up to 3):</label>
                                 <div id="journal-options" class="journal-options">
                                     {% for journal, url in journal_dict.items() %}
                                     <div class="journal-option" data-value="{{ journal }}">
