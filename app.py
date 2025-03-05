@@ -1,4 +1,190 @@
-@app.route('/', methods=['GET', 'POST'])
+#!/usr/bin/env python3
+import locale
+
+_old_setlocale = locale.setlocale
+def safe_setlocale(category, loc=None):
+    if loc == "":
+        loc = "C"
+    return _old_setlocale(category, loc)
+locale.setlocale = safe_setlocale
+
+import asyncio
+import aiohttp
+from bs4 import BeautifulSoup
+import re
+import json
+from datetime import datetime
+from typing import List, Dict, Tuple
+from flask import Flask, render_template, request, jsonify
+from markupsafe import Markup
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY')
+if app.secret_key is None:
+    raise ValueError("SECRET_KEY environment variable not set!")
+
+async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -> List[Dict]:
+    try:
+        async with session_aiohttp.get(url, timeout=30) as response:
+            if response.status == 403:
+                print(f"Error: 403 Forbidden for {url}.  The journal's server is blocking requests.")
+                return []
+            if response.status != 200:
+                print(f"Error fetching {url}: Status code {response.status}")
+                return []
+
+            xml = await response.text()
+            try:
+                soup = BeautifulSoup(xml, 'lxml-xml')  # Explicitly try lxml-xml first
+            except Exception:
+                try:
+                    soup = BeautifulSoup(xml, 'xml')
+                except Exception:
+                    try:
+                        soup = BeautifulSoup(xml, 'html.parser')
+                    except Exception:
+                        print(f"Error parsing XML from {url}")
+                        return []
+
+            feed_title = None
+            channel = soup.find('channel')
+            if channel:
+                feed_title_elem = channel.find('title')
+                if feed_title_elem:
+                    feed_title = feed_title_elem.text.strip()
+            if not feed_title:
+                feed_title_elem = soup.find('title')
+                if feed_title_elem:
+                    feed_title = feed_title_elem.text.strip()
+
+            articles = soup.find_all(['item', 'entry'])
+            if not articles:
+                articles = soup.find_all(['article', 'content'])
+            if not articles:
+                print(f"No articles found in {url}")
+                return []
+
+            journal_articles = []
+            for article in articles:
+                title_elem = article.find(['title', 'dc:title']) or article.title
+                title = title_elem.text if title_elem else "No title available"
+
+                description_elem = (
+                        article.find(['description', 'summary', 'dc:description', 'abstract']) or article.description)
+                abstract = description_elem.text if description_elem else ""
+
+                if abstract and ('<' in abstract and '>' in abstract):
+                    abstract_soup = BeautifulSoup(abstract, 'html.parser')
+                    abstract = abstract_soup.get_text(separator=' ', strip=True)
+
+                authors = article.find_all(['author', 'dc:creator', 'creator'])
+                author_list = [author.text for author in authors if author.text]
+                if not author_list and abstract:
+                    author_patterns = [
+                        r'by\s+([\w\s,\.]+)(?:$$|\d|$)',
+                        r'authors?[:;]\s*([\w\s,\.]+)',
+                        r'^([\w\s,\.]+?),\s+\d{4}',
+                    ]
+                    for pattern in author_patterns:
+                        matches = re.search(pattern, abstract, re.IGNORECASE)
+                        if matches:
+                            potential_authors = matches.group(1).strip()
+                            if len(potential_authors.split()) < 10:
+                                author_list = [potential_authors]
+                                break
+                authors_text = ", ".join(author_list) if author_list else "Unknown Author"
+
+                pub_date = (article.find(['pubDate', 'published', 'dc:date']) or article.pubDate)
+                pub_date = pub_date.text if pub_date else ""
+
+                year = ""
+                if pub_date:
+                    year_match = re.search(r'(20\d\d)', pub_date)
+                    if year_match:
+                        year = year_match.group(1)
+                if not year and abstract:
+                    year_match = re.search(r'(20\d\d)', abstract)
+                    if year_match:
+                        year = year_match.group(1)
+
+                journal_name = feed_title if feed_title else "Unknown Journal"
+                journal_name = re.sub(r'RSS Feed$|Feed$|RSS$', '', journal_name).strip()
+
+                numbers_found = extract_numbers(abstract)
+                importance_score = len(numbers_found) * 2
+                stat_terms = ['significant', 'correlation', 'regression', 'coefficient', 'p-value',
+                              'standard deviation']
+                for term in stat_terms:
+                    if term in abstract.lower():
+                        importance_score += 2
+                if len(abstract) > 300 and numbers_found:
+                    importance_score += 3
+
+                journal_articles.append({
+                    'title': title,
+                    'abstract': abstract,
+                    'journal': journal_name,
+                    'authors': authors_text,
+                    'published': pub_date,
+                    'year': year,
+                    'importance_score': importance_score,
+                    'quantitative_data': numbers_found,
+                    'source_url': url
+                })
+            return journal_articles
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return []
+
+def extract_numbers(text: str) -> List[str]:
+    pattern = r'\d+(?:.\d+)?%?|\bp\s*<\s0.\d+|\br\s=\s*0.\d+'
+    return re.findall(pattern, text)
+
+async def preprocess_articles(articles: List[Dict]) -> List[Dict]:
+    quantitative_articles = [article for article in articles
+                             if article['quantitative_data'] and article['abstract']]
+    quantitative_articles.sort(key=lambda x: x['importance_score'], reverse=True)
+    return quantitative_articles
+
+
+async def format_articles_for_prompt(articles: List[Dict]) -> str:
+    if not articles:
+        return "No articles found to summarize."
+
+    articles_by_journal = {}
+    for article in articles:
+        journal = article['journal']
+        articles_by_journal.setdefault(journal, []).append(article)
+
+    articles_by_journal = {journal: arts for journal, arts in articles_by_journal.items()
+                           if any(article['quantitative_data'] for article in arts)}
+
+    for journal in articles_by_journal:
+        articles_by_journal[journal].sort(key=lambda x: x['importance_score'], reverse=True)
+        articles_by_journal[journal] = articles_by_journal[journal][:3]
+
+    formatted_articles = ""
+    for journal, journal_articles in articles_by_journal.items():
+        formatted_articles += f"\n{journal}\n"
+        for article in journal_articles:
+            formatted_articles += f"\nTitle: {article['title']}\n"
+            formatted_articles += f"Authors: {article['authors']}\n"
+            formatted_articles += f"Year: {article.get('year', 'Unknown')}\n"
+            formatted_articles += f"Abstract: {article['abstract']}\n"
+            formatted_articles += f"Quantitative data found: {', '.join(article['quantitative_data'])}\n"
+            formatted_articles += f"Published: {article['published']}\n"
+            formatted_articles += "-" * 50 + "\n"
+
+    return formatted_articles
+
+
+
+# --- Flask Routes ---
+@app.route('/', methods=['GET', 'POST']) # Moved the route decorator to be *before* the function definition.
 def index():
     journal_dict = {
         "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
@@ -13,6 +199,7 @@ def index():
     }
 
     if request.method == 'POST':
+        # Get the comma-separated string and split it into a list
         selected_journals_str = request.form.get('journals')
         selected_journals = selected_journals_str.split(',') if selected_journals_str else []
         print(f"Selected Journals: {selected_journals}")  # Keep this for debugging
@@ -20,7 +207,7 @@ def index():
 
         rss_sources = []
         for journal_name in selected_journals:
-            journal_name = journal_name.strip()
+            journal_name = journal_name.strip()  # Remove leading/trailing spaces
             if journal_name in journal_dict:
                 rss_sources.append(journal_dict[journal_name])
 
@@ -29,10 +216,12 @@ def index():
                 return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
             rss_sources.append(custom_rss_url)
 
+        # Enforce a maximum of 3 selected journals.
         if len(rss_sources) > 3:
             return jsonify({'error': 'Please select a maximum of 3 journals.'}), 400
         if len(rss_sources) == 0:
             return jsonify({'error': 'Please select at least 1 journal.'}), 400
+
 
         async def fetch_and_preprocess():
             try:
@@ -51,6 +240,8 @@ def index():
                         return jsonify({'error': "No articles found in the provided RSS feeds."}), 200
 
                     quantitative_articles = await preprocess_articles(flattened_articles)
+
+
                     formatted_articles_str = await format_articles_for_prompt(quantitative_articles)
 
                     prompt = """
@@ -84,6 +275,7 @@ def index():
                     else:
                         prompt = prompt.format(articles=formatted_articles_str)
 
+
                     # Corrected summary_data initialization and population
                     summary_data = {
                         'date': datetime.now().strftime('%Y-%m-%d'),
@@ -105,6 +297,7 @@ def index():
                     return jsonify({'status': 'ready', 'prompt': prompt, 'summary_data': summary_data})
 
             except Exception as e:
+                # Catch any exceptions that occur during the process
                 return jsonify({'error': str(e)}), 500
 
         loop = asyncio.new_event_loop()
@@ -112,4 +305,36 @@ def index():
         result = loop.run_until_complete(fetch_and_preprocess())
         loop.close()
 
-        return result
+        return result  # Return prompt and summary_data to the frontend
+
+
+    return render_template('index.html', journal_dict=journal_dict,
+                           subtitle=Markup("- Target: Top Journals in Communication<br>- Focus: Quantitative Studies"))
+
+
+
+@app.route('/about') # Moved the route decorator
+def about():
+    about_text = Markup("""
+    <p>Created by <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a></p>
+    <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings in the abstracts from a number of top journals in the field of Communication, using their publicly available RSS feeds. You can also analyze any journal in any other field of study by simply typing the link to its RSS feed.</p>
+    <p>This application uses a large language model (LLM) API—currently Gemini 2.0 Flash, chosen for its high rate limits and strong performance among free LLMs—to generate concise summaries of recent academic papers. It is designed to help researchers stay up to date with the latest developments.</p>
+    <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies are harder to summarize as they rely more on nuanced interpretations and contextual depth, which usually require full engagement with the text to fully appreciate their insights.</p>
+
+    <p><strong>Your API Key Security:</strong> Your Gemini API key is <strong>not</strong> sent to our servers.  It is used directly within your web browser (client-side) to communicate with the Gemini API.  This ensures your key remains secure and under your control. Keep your API key secret. Do not share it with others or commit it to public code repositories.</p>
+
+    <p><strong>How to Get a Gemini API Key:</strong>  You can obtain a free Gemini API key by following these steps:</p>
+    <ol>
+        <li>Go to <a href="https://ai.google.dev/" target="_blank">Google AI Studio</a>.</li>
+        <li>Click on "Get API Key".</li>
+        <li>Follow the instructions to create a new project or use an existing Google Cloud project.</li>
+        <li>Once your project is set up, you can generate an API key.</li>
+    </ol>
+
+    <p>Open-sourced under the MIT License, you can find all the files for this hobby project at <a href="https://github.com/ekizilkaya/academic-summarizer" target="_blank">GitHub repository</a>.</p>
+    <p>For questions or feedback, feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a></p>
+    """)
+    return render_template('about.html', about_text=about_text)
+
+if __name__ == '__main__':
+    app.run(debug=True)
