@@ -1,9 +1,6 @@
-# C:\Users\EMRE\My Apps\academic-summarizer\app.py
-
 #!/usr/bin/env python3
 import locale
 
-# Monkey-patch locale.setlocale (remains unchanged)
 _old_setlocale = locale.setlocale
 def safe_setlocale(category, loc=None):
     if loc == "":
@@ -20,29 +17,29 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 from flask import Flask, render_template, request, jsonify
 from markupsafe import Markup
-import os  # Import the os module
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY')  # IMPORTANT: Get key from environment
+app.secret_key = os.environ.get('SECRET_KEY')
 if app.secret_key is None:
     raise ValueError("SECRET_KEY environment variable not set!")
 
-
-# --- Helper functions (mostly unchanged, see modifications below) ---
-
 async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -> List[Dict]:
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        async with session_aiohttp.get(url, timeout=30, headers=headers) as response:
-            if response.status != 200:
-                print(f"Error fetching {url}: Status code {response.status}") # Debug print
+        async with session_aiohttp.get(url, timeout=30) as response:
+            if response.status == 403:
+                print(f"Error: 403 Forbidden for {url}.  The journal's server is blocking requests.")
                 return []
+            if response.status != 200:
+                print(f"Error fetching {url}: Status code {response.status}")
+                return []
+
             xml = await response.text()
             try:
-                soup = BeautifulSoup(xml, 'lxml')
+                soup = BeautifulSoup(xml, 'lxml-xml')  # Explicitly try lxml-xml first
             except Exception:
                 try:
                     soup = BeautifulSoup(xml, 'xml')
@@ -50,7 +47,7 @@ async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -
                     try:
                         soup = BeautifulSoup(xml, 'html.parser')
                     except Exception:
-                        print(f"Error parsing XML from {url}")  # Debug print
+                        print(f"Error parsing XML from {url}")
                         return []
 
             feed_title = None
@@ -68,7 +65,7 @@ async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -
             if not articles:
                 articles = soup.find_all(['article', 'content'])
             if not articles:
-                print(f"No articles found in {url}")  # Debug print
+                print(f"No articles found in {url}")
                 return []
 
             journal_articles = []
@@ -155,7 +152,6 @@ async def preprocess_articles(articles: List[Dict]) -> List[Dict]:
 
 
 async def format_articles_for_prompt(articles: List[Dict]) -> str:
-    """Formats articles for the Gemini API prompt (moved from summarize_articles)."""
     if not articles:
         return "No articles found to summarize."
 
@@ -185,10 +181,6 @@ async def format_articles_for_prompt(articles: List[Dict]) -> str:
 
     return formatted_articles
 
-
-
-# --- Flask Routes ---
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     journal_dict = {
@@ -204,14 +196,14 @@ def index():
     }
 
     if request.method == 'POST':
-        # Get the comma-separated string and split it into a list
         selected_journals_str = request.form.get('journals')
         selected_journals = selected_journals_str.split(',') if selected_journals_str else []
+        print(f"Selected Journals: {selected_journals}")  # Keep this for debugging
         custom_rss_url = request.form.get('custom_rss_url')
 
         rss_sources = []
         for journal_name in selected_journals:
-            journal_name = journal_name.strip()  # Remove leading/trailing spaces
+            journal_name = journal_name.strip()
             if journal_name in journal_dict:
                 rss_sources.append(journal_dict[journal_name])
 
@@ -220,29 +212,30 @@ def index():
                 return jsonify({'error': f'Invalid URL format: {custom_rss_url}'}), 400
             rss_sources.append(custom_rss_url)
 
-        # Enforce a maximum of 3 selected journals.
         if len(rss_sources) > 3:
             return jsonify({'error': 'Please select a maximum of 3 journals.'}), 400
         if len(rss_sources) == 0:
             return jsonify({'error': 'Please select at least 1 journal.'}), 400
 
-
         async def fetch_and_preprocess():
             try:
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session_aiohttp:
-                    tasks = [fetch_academic_rss(url, session_aiohttp) for url in rss_sources]
-                    all_articles = await asyncio.gather(*tasks)
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                }
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120), headers=headers) as session_aiohttp:
+                    all_articles = []
+                    for url in rss_sources:
+                        articles = await fetch_academic_rss(url, session_aiohttp)
+                        all_articles.extend(articles)
+                        await asyncio.sleep(1)  # Add a 1-second delay
+
                     flattened_articles = [item for sublist in all_articles for item in sublist]
                     if not flattened_articles:
                         return jsonify({'error': "No articles found in the provided RSS feeds."}), 200
 
                     quantitative_articles = await preprocess_articles(flattened_articles)
-                    if not quantitative_articles:
-                        return jsonify({'error': "No articles with quantitative data found."}), 200
-
                     formatted_articles_str = await format_articles_for_prompt(quantitative_articles)
 
-                    # Prepare prompt and summary data (like in the original summarize_articles)
                     prompt = """
                     Analyze these academic articles and create a detailed summary following these rules:
 
@@ -269,7 +262,10 @@ def index():
                     Articles to analyze:
                     {articles}
                     """
-                    prompt = prompt.format(articles=formatted_articles_str)
+                    if not quantitative_articles:
+                        prompt = "No articles with quantitative data were found in the selected journals."
+                    else:
+                        prompt = prompt.format(articles=formatted_articles_str)
 
                     summary_data = {
                         'date': datetime.now().strftime('%Y-%m-%d'),
@@ -281,18 +277,15 @@ def index():
                         journal = article['journal']
                         if journal not in summary_data['journals']:
                             summary_data['journals'][journal] = {
-                            'article_count': 0,
-                            'article_titles': []
+                                'article_count': 0,
+                                'article_titles': []
                             }
                         summary_data['journals'][journal]['article_count'] += 1
                         summary_data['journals'][journal]['article_titles'].append(article['title'])
 
-
-
                     return jsonify({'status': 'ready', 'prompt': prompt, 'summary_data': summary_data})
 
             except Exception as e:
-                # Catch any exceptions that occur during the process
                 return jsonify({'error': str(e)}), 500
 
         loop = asyncio.new_event_loop()
@@ -300,12 +293,10 @@ def index():
         result = loop.run_until_complete(fetch_and_preprocess())
         loop.close()
 
-        return result  # Return prompt and summary_data to the frontend
-
+        return result
 
     return render_template('index.html', journal_dict=journal_dict,
                            subtitle=Markup("- Target: Top Journals in Communication<br>- Focus: Quantitative Studies"))
-
 
 @app.route('/about')
 def about():
