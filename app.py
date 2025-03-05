@@ -192,7 +192,7 @@ def index():
         "Internet Research": "https://www.emerald.com/insight/rss/1066-2243/latest",
         "Big Data and Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=bdsa&type=etoc&feed=rss",
         "Journal of Marketing": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=jmxa&type=etoc&feed=rss",
-        "International Journal of Communication": "https://ijoc.org/index.php/ijoc/gateway/plugin/WebFeedGatewayPlugin/rss2"
+        "Journal of Communication": "https://academic.oup.com/rss/site_6088/3963.xml"
     }
 
     if request.method == 'POST':
