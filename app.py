@@ -1,3 +1,5 @@
+# C:\Users\EMRE\My Apps\academic-summarizer\app.py
+
 #!/usr/bin/env python3
 import locale
 
@@ -36,6 +38,7 @@ async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -
         headers = {"User-Agent": "Mozilla/5.0"}
         async with session_aiohttp.get(url, timeout=30, headers=headers) as response:
             if response.status != 200:
+                print(f"Error fetching {url}: Status code {response.status}") # Debug print
                 return []
             xml = await response.text()
             try:
@@ -47,6 +50,7 @@ async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -
                     try:
                         soup = BeautifulSoup(xml, 'html.parser')
                     except Exception:
+                        print(f"Error parsing XML from {url}")  # Debug print
                         return []
 
             feed_title = None
@@ -64,6 +68,7 @@ async def fetch_academic_rss(url: str, session_aiohttp: aiohttp.ClientSession) -
             if not articles:
                 articles = soup.find_all(['article', 'content'])
             if not articles:
+                print(f"No articles found in {url}")  # Debug print
                 return []
 
             journal_articles = []
@@ -190,7 +195,6 @@ def index():
         "New Media & Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=nmsa&type=axatoc&feed=rss",
         "Social Media + Society": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=smsa&type=etoc&feed=rss",
         "Journalism": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=joua&type=axatoc&feed=rss",
-        "Communication Methods and Measures": "https://www.tandfonline.com/feed/rss/hcms20",
         "Communication Research": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=crxa&type=axatoc&feed=rss",
         "International Journal of Press/Politics": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=hijb&type=axatoc&feed=rss",
         "Internet Research": "https://www.emerald.com/insight/rss/1066-2243/latest",
@@ -222,68 +226,74 @@ def index():
         if len(rss_sources) == 0:
             return jsonify({'error': 'Please select at least 1 journal.'}), 400
 
+
         async def fetch_and_preprocess():
-          async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session_aiohttp:
-            tasks = [fetch_academic_rss(url, session_aiohttp) for url in rss_sources]
-            all_articles = await asyncio.gather(*tasks)
-            flattened_articles = [item for sublist in all_articles for item in sublist]
-            if not flattened_articles:
-                return "No articles found in the provided RSS feeds."
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session_aiohttp:
+                    tasks = [fetch_academic_rss(url, session_aiohttp) for url in rss_sources]
+                    all_articles = await asyncio.gather(*tasks)
+                    flattened_articles = [item for sublist in all_articles for item in sublist]
+                    if not flattened_articles:
+                        return jsonify({'error': "No articles found in the provided RSS feeds."}), 200
 
-            quantitative_articles = await preprocess_articles(flattened_articles)
-            if not quantitative_articles:
-                return "No articles with quantitative data found."
+                    quantitative_articles = await preprocess_articles(flattened_articles)
+                    if not quantitative_articles:
+                        return jsonify({'error': "No articles with quantitative data found."}), 200
 
-            formatted_articles_str = await format_articles_for_prompt(quantitative_articles)
+                    formatted_articles_str = await format_articles_for_prompt(quantitative_articles)
 
-            # Prepare prompt and summary data (like in the original summarize_articles)
-            prompt = """
-            Analyze these academic articles and create a detailed summary following these rules:
+                    # Prepare prompt and summary data (like in the original summarize_articles)
+                    prompt = """
+                    Analyze these academic articles and create a detailed summary following these rules:
 
-            1. Include the top 3 most important articles from EACH journal provided (or fewer if less than 3 are available)
-            2. For each article:
-            - Focus primarily on quantitative findings (numbers, percentages, statistical values)
-            - Extract the exact numerical results and their context
-            - Include a brief conclusion about what these numbers mean (1-2 sentences)
+                    1. Include the top 3 most important articles from EACH journal provided (or fewer if less than 3 are available)
+                    2. For each article:
+                    - Focus primarily on quantitative findings (numbers, percentages, statistical values)
+                    - Extract the exact numerical results and their context
+                    - Include a brief conclusion about what these numbers mean (1-2 sentences)
 
-            Format the output exactly as follows:
+                    Format the output exactly as follows:
 
-            **JOURNAL NAME**
-            -------------
-            1. "Article Title" by Author Names (Year)
-            Key findings: [Specific numerical findings with exact numbers, percentages, p-values]
-            [Include 1-2 sentences explaining what these numbers mean as a conclusion]
+                    **JOURNAL NAME**
+                    -------------
+                    1. "Article Title" by Author Names (Year)
+                    Key findings: [Specific numerical findings with exact numbers, percentages, p-values]
+                    [Include 1-2 sentences explaining what these numbers mean as a conclusion]
 
-            2. [Next article...]
-            3. [Next article...]
+                    2. [Next article...]
+                    3. [Next article...]
 
-            Important: Include EVERY journal provided, even if it only has 1-2 articles with quantitative data.
-            If a journal has fewer than 3 articles with quantitative data, explicitly state: "This journal did not contain a third article with substantial quantitative findings."
+                    Important: Include EVERY journal provided, even if it only has 1-2 articles with quantitative data.
+                    If a journal has fewer than 3 articles with quantitative data, explicitly state: "This journal did not contain a third article with substantial quantitative findings."
 
-            Articles to analyze:
-            {articles}
-            """
-            prompt = prompt.format(articles=formatted_articles_str)
+                    Articles to analyze:
+                    {articles}
+                    """
+                    prompt = prompt.format(articles=formatted_articles_str)
 
-            summary_data = {
-                'date': datetime.now().strftime('%Y-%m-%d'),
-                'journals': {},
-                'total_articles_processed': len(quantitative_articles),
-                'total_journals_processed': len({article['journal'] for article in quantitative_articles})
-            }
-            for article in quantitative_articles:
-                journal = article['journal']
-                if journal not in summary_data['journals']:
-                  summary_data['journals'][journal] = {
-                    'article_count': 0,
-                    'article_titles': []
-                  }
-                summary_data['journals'][journal]['article_count'] += 1
-                summary_data['journals'][journal]['article_titles'].append(article['title'])
+                    summary_data = {
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'journals': {},
+                        'total_articles_processed': len(quantitative_articles),
+                        'total_journals_processed': len({article['journal'] for article in quantitative_articles})
+                    }
+                    for article in quantitative_articles:
+                        journal = article['journal']
+                        if journal not in summary_data['journals']:
+                            summary_data['journals'][journal] = {
+                            'article_count': 0,
+                            'article_titles': []
+                            }
+                        summary_data['journals'][journal]['article_count'] += 1
+                        summary_data['journals'][journal]['article_titles'].append(article['title'])
 
 
 
-            return jsonify({'status': 'ready', 'prompt': prompt, 'summary_data': summary_data})
+                    return jsonify({'status': 'ready', 'prompt': prompt, 'summary_data': summary_data})
+
+            except Exception as e:
+                # Catch any exceptions that occur during the process
+                return jsonify({'error': str(e)}), 500
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -301,7 +311,7 @@ def index():
 def about():
     about_text = Markup("""
     <p>Created by <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a></p>
-    <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings in the abstractss from a number of top journals in the field of Communication, using their publicly available RSS feeds. You can also analyze any journal in any other field of study by simply typing the link to its RSS feed.</p>
+    <p>I created this open-source app in a few hours on a Sunday morning while reviewing the latest academic papers during my Ph.D. studies. The app generates AI-driven summaries focused on quantitative findings in the abstracts from a number of top journals in the field of Communication, using their publicly available RSS feeds. You can also analyze any journal in any other field of study by simply typing the link to its RSS feed.</p>
     <p>This application uses a large language model (LLM) API—currently Gemini 2.0 Flash, chosen for its high rate limits and strong performance among free LLMs—to generate concise summaries of recent academic papers. It is designed to help researchers stay up to date with the latest developments.</p>
     <p>Why the focus on quantitative research? Because its results are typically presented in structured formats—such as statistical analyses, tables, and models—allowing for quick access to key empirical insights without losing essential meaning. In contrast, qualitative studies are harder to summarize as they rely more on nuanced interpretations and contextual depth, which usually require full engagement with the text to fully appreciate their insights.</p>
 
