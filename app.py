@@ -229,11 +229,11 @@ def index():
                         all_articles.extend(articles)
                         await asyncio.sleep(1)
 
-                    flattened_articles = [item for sublist in all_articles for item in sublist]
-                    if not flattened_articles:
+                    # The articles are already in the correct format, no need to flatten
+                    if not all_articles:
                         return jsonify({'error': "No articles found in the provided RSS feeds."}), 200
 
-                    quantitative_articles = await preprocess_articles(flattened_articles)
+                    quantitative_articles = await preprocess_articles(all_articles)
                     formatted_articles_str = await format_articles_for_prompt(quantitative_articles)
 
                     prompt = """
