@@ -105,11 +105,14 @@ You can *easily* extend this by adding RSS feed URLs, either through the custom 
 
 ## Contributing 🤝
 
-Contributions are very welcome!  Please feel free to:
+Contributions are very welcome! Please feel free to:
 
 *   Open issues to report bugs or suggest features.
-*   Submit pull requests with improvements (code, documentation, etc.).  Follow good coding practices (clear variable names, comments, error handling).
-*   **Support the Project:** You can support the continued web hosting and development of this open-source application by donating here: [https://buymeacoffee.com/ekizilkaya](https://buymeacoffee.com/ekizilkaya)  Every contribution helps keep this tool available online and improving!
+*   Submit pull requests with improvements (code, documentation, etc.). Follow good coding practices (clear variable names, comments, error handling).
+
+## Support the Project ❤️
+
+You can support the continued web hosting and development of this open-source application by donating here: [https://buymeacoffee.com/ekizilkaya](https://buymeacoffee.com/ekizilkaya). Every contribution helps keep this tool available online and improving!
 
 ## License 📝
 
