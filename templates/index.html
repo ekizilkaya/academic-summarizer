@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Academic Journal Summarizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- Add SweetAlert -->
+    <style>
+        :root {
+            --primary: #3f51b5;
+            --secondary: #ff4081;
+            --accent: #ff4081;
+            --light: #f5f7fa;
+            --dark: #212121;
+            --success: #4caf50;
+            --error: #f44336;
+            --card-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --transition-speed: 0.3s;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        /* Header styles */
+        .hero-header {
+            background-image: linear-gradient(rgba(63, 81, 181, 0.9), rgba(63, 81, 181, 0.8)), url('/api/placeholder/1200/300');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-bottom: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .hero-header h1 {
+            font-weight: 700;
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        @media (max-width: 576px) {
+            .hero-header h1 {
+                font-size: 1.8rem;
+            }
+            .hero-header {
+                padding: 1.5rem 0;
+            }
+        }
+        .hero-header p {
+            font-size: 1.1rem;
+            max-width: 90%;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        /* Card styles */
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .card-header {
+            background-color: var(--primary);
+            color: white;
+            border-radius: 8px 8px 0 0 !important;
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 1rem 1.25rem;
+        }
+        .card-header i {
+            margin-right: 0.5rem;
+        }
+        .card-body {
+            padding: 1.25rem;
+        }
+        /* Form elements */
+        .form-control {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            padding: 0.75rem 1rem;
+            transition: all var(--transition-speed);
+        }
+        .form-control:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 0.2rem rgba(255, 64, 129, 0.25);
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+        /* Journal selection */
+        .journal-group {
+            margin-bottom: 1.5rem;
+        }
+        .journal-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .journal-option {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 0.8rem;
+            border-radius: 50px;
+            background-color: white;
+            border: 2px solid #e9ecef;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        @media (max-width: 576px) {
+            .journal-option {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.8rem;
+            }
+        }
+        .journal-option:hover {
+            border-color: var(--secondary);
+            background-color: #f8f9fa;
+        }
+        .journal-option.active {
+            background-color: var(--secondary);
+            border-color: var(--secondary);
+            color: white;
+            box-shadow: 0 2px 5px rgba(255, 64, 129, 0.3);
+        }
+        .journal-option i {
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        /* Button styles */
+        .btn-primary {
+            background-color: var(--secondary);
+            border-color: var(--secondary);
+            border-radius: 6px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(255, 64, 129, 0.3);
+            transition: all var(--transition-speed);
+        }
+        .btn-primary:hover {
+            background-color: #f50057;
+            border-color: #f50057;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 64, 129, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        /* Secondary button style for Surprise Me */
+        .btn-secondary {
+            background-color: #f5f7fa;
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+            border-radius: 6px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all var(--transition-speed);
+        }
+        .btn-secondary:hover {
+            background-color: #f0f2f5;
+            color: #f50057;
+            border-color: #f50057;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        .btn-secondary:active {
+            transform: translateY(0);
+        }
+        /* Button container for side-by-side buttons */
+        .button-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .analyze-button {
+            flex: 2;
+        }
+        .surprise-button {
+            flex: 1;
+        }
+        /* Spinner styles */
+        .spinner-container {
+            display: none; /* Initially hidden */
+            margin: 2rem auto;
+            text-align: center;
+        }
+        .spinner-text {
+            margin-top: 1rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+       .loading-spinner { /* Add a loading spinner */
+          border: 4px solid rgba(0, 0, 0, 0.1);
+          border-left-color: #0d6efd; /* Or your preferred color */
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+          display: inline-block;
+          margin-right: 5px;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        /* Results section */
+        .results-card {
+             margin-top: 20px; white-space: pre-wrap;
+            display: none; /* Initially hidden */
+        }
+        .results-content {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            padding: 1.25rem;
+            background-color: white;
+              margin-top: 20px; white-space: pre-wrap; /* Preserve formatting */
+        }
+        .results-content pre {
+            display: block;
+            width: 100%;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #333;
+        }
+        @media (max-width: 576px) {
+            .results-content pre {
+                font-size: 0.8rem;
+            }
+        }
+        /* Copy button styling */
+        .copy-button {
+            display: none;
+            margin-top: 1rem;
+            border-radius: 6px;
+            background-color: var(--light);
+            color: var(--dark);
+            transition: all var(--transition-speed);
+            width: 100%;
+        }
+        .copy-button:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        /* Footer styles */
+        .footer {
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            color: #6c757d;
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color var(--transition-speed);
+        }
+        .footer a:hover {
+            color: var(--secondary);
+            text-decoration: underline;
+        }
+        /* Container adjustments for mobile */
+        .container-fluid {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        @media (min-width: 768px) {
+            .container-fluid {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+        }
+        .pink-text { color: #ff4081; } /* Bootstrap's pink */
+        .journal-header { font-weight: bold; margin-top: 1em; }
+        .article { margin-bottom: 1em; padding-left: 1em; border-left: 3px solid #ddd; }
+        /* Responsive adjustments for button container */
+        @media (max-width: 576px) {
+            .button-container {
+                flex-direction: column;
+            }
+            .analyze-button, .surprise-button {
+                width: 100%;
+                flex: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Header -->
+    <header class="hero-header">
+        <div class="container-fluid">
+            <h1>Academic Journal Summarizer</h1>
+            <p>{{ subtitle | safe }}</p>
+        </div>
+    </header>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-10 offset-lg-1">
+                <!-- API Key Card -->
+                <div class="card fade-in">
+                    <div class="card-header">
+                         <i class="fas fa-key"></i> AI-Powered Search
+                    </div>
+                    <div class="card-body">
+                       <form id="analysisForm">
+                            <div class="form-group">
+                                 <label for="api_key">Enter Your Gemini API Key <a href="/about" class="pink-text" style="text-decoration: none;" target="_blank">How?</a></label>
+                                <input type="password" class="form-control" id="api_key" name="api_key" required>
+                                <small class="form-text text-muted">Your API key is securely used in your browser and never sent to us.</small>
+                            </div>
+                            <!-- Journal Selection Card -->
+                            <div class="form-group journal-group">
+                                <label><i class="fas fa-book"></i> Select Journals (Up to 3):</label>
+                                <div id="journal-options" class="journal-options">
+                                    {% for journal, url in journal_dict.items() %}
+                                    <div class="journal-option" data-value="{{ journal }}">
+                                        <i class="fas fa-journal-whills"></i> {{ journal }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <!-- Hidden input to store selected journals -->
+                                <input type="hidden" name="journals" id="selected-journals">
+                            </div>
+                            <div class="form-group">
+                                <label for="custom_rss_url"><i class="fas fa-rss"></i> Custom RSS URL (Optional):</label>
+                                <input type="text" class="form-control" id="custom_rss_url" name="custom_rss_url"
+                                    placeholder="https://example.com/journal/rss">
+                            </div>
+                            <!-- Updated button container with two buttons -->
+                            <div class="button-container">
+                                <button type="submit" class="btn btn-primary analyze-button">
+                                    <i class="fas fa-search"></i> Analyze the Articles
+                                </button>
+                                 <!-- Hidden input for request type -->
+                                <input type="hidden" name="request_type" id="request-type" value="analyze">
+                                <button type="button" class="btn btn-secondary surprise-button" id="surprise-button">
+                                    <i class="fas fa-random"></i> Surprise Me!
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+               <!-- Loading Spinner -->
+                <div class="spinner-container" id="spinner-container">
+                    <span class="loading-spinner"></span>
+                    <p class="spinner-text">Analyzing academic journals... Please wait.</p>
+                </div>
+                <!-- Results Card -->
+                <div class="card results-card" id="results-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i> Analysis Results
+                    </div>
+                    <div class="card-body">
+                        <!-- Results content will be added here by JavaScript -->
+                    </div>
+                     <div class="card-footer text-muted" id="quote-footer">
+                        "We have the duty of formulating, of summarizing, and of communicating our conclusions, in intelligible form, in recognition of the right of other free minds to utilize them in making their own decisions." — Ronald Fisher.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container-fluid">
+            <p>Created by <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a> | <a href="/about">About This Project</a> <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ekizilkaya" data-color="#FFDD00" data-emoji="" data-font="Poppins" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script></p>
+            <p><small>© 2025 <a href="https://github.com/ekizilkaya/academic-summarizer" target="_blank">View on GitHub</a></small></p>
+        </div>
+    </footer>
+    <!-- Add jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <!-- Add Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <!-- Add Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const journalOptions = document.querySelectorAll('.journal-option');
+            const selectedJournalsInput = document.getElementById('selected-journals');
+            const analysisForm = document.getElementById('analysisForm');
+            const surpriseButton = document.getElementById('surprise-button');
+            const resultsCard = document.getElementById('results-card');
+            const spinnerContainer = document.getElementById('spinner-container');
+            const quoteFooter = document.getElementById('quote-footer');
+            
+            // Array of quotes to display randomly
+            const quotes = [
+                '"We have the duty of formulating, of summarizing, and of communicating our conclusions, in intelligible form, in recognition of the right of other free minds to utilize them in making their own decisions." — Ronald Fisher.',
+                '"One man\'s generalisation is another man\'s succinct yet profound summation of a complex theory or argument" — Stewart Stafford.',
+                '"In all summaries, the problems seem simpler than they actually are." — Rollo May.',
+                '"Perhaps the best test of a man\'s intelligence is his capacity for making a summary." — Lytton Strachey.',
+                '"Data are just summaries of thousands of stories - tell a few of those stories to help make the data meaningful." — Dan Heath.',
+                '"Abstracts, abridgments, summaries, etc., have the same use with burning-glasses,--to collect the diffused light rays of wit and learning in authors, and make them point with warmth and quickness upon the reader\'s imagination." — Jonathan Swift.',
+                '"If you had to summarize the Old Testament, the summary would be: stop doing this to yourselves." — Marilynne Robinson.',
+                '"Numerical quantities focus on expected values, graphical summaries on unexpected values." — John Tukey.',
+                '"To summarize the summary of the summary: people are a problem." — Douglas Adams.',
+                '"The aim of science is to seek the simplest explanations of complex facts." — Alfred North Whitehead.'
+            ];
+            
+            // Function to set a random quote in the footer
+            function setRandomQuote() {
+                const randomIndex = Math.floor(Math.random() * quotes.length);
+                quoteFooter.textContent = quotes[randomIndex];
+            }
+            
+            // Set a random quote when results are displayed
+            function displayRandomQuote() {
+                setRandomQuote();
+            }
+            
+            // Journal selection functionality - Fix click event handling
+            journalOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    // Toggle active class
+                    this.classList.toggle('active');
+                    // Update the hidden input field with selected journals
+                    updateSelectedJournals();
+                });
+            });
+            
+            function updateSelectedJournals() {
+                const selectedJournals = [];
+                document.querySelectorAll('.journal-option.active').forEach(option => {
+                    selectedJournals.push(option.dataset.value);
+                });
+                selectedJournalsInput.value = selectedJournals.join(',');
+                console.log("Selected journals:", selectedJournalsInput.value); // For debugging
+            }
+            
+            // Handle surprise me button - Fix event handling
+            surpriseButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                // Set request_type to surprise_me
+                document.getElementById('request-type').value = 'surprise_me';
+                // Submit the form
+                submitForm();
+            });
+            
+            // Handle regular form submission - Fix form submission
+            analysisForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                document.getElementById('request-type').value = 'analyze';
+                submitForm();
+            });
+            
+            function submitForm() {
+                const apiKey = document.getElementById('api_key').value;
+                if (!apiKey) {
+                    Swal.fire({
+                        title: 'API Key Required',
+                        text: 'Please enter your Gemini API key.',
+                        icon: 'warning'
+                    });
+                    return;
+                }
+                
+                // Create a new FormData object from the form
+                const formData = new FormData(analysisForm);
+                formData.delete('api_key'); // Don't send API key to the server
+                
+                // Show loading spinner
+                spinnerContainer.style.display = 'block';
+                resultsCard.style.display = 'none';
+                
+                // Send AJAX request to Flask backend
+                fetch('/', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    spinnerContainer.style.display = 'none';
+                    if (data.error) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: data.error,
+                            icon: 'error'
+                        });
+                        return;
+                    }
+                    if (data.status === 'ready' && data.prompt) {
+                        // Make call to Gemini API with the prompt
+                        processWithGemini(data.prompt, document.getElementById('api_key').value);
+                    }
+                })
+                .catch(error => {
+                    spinnerContainer.style.display = 'none';
+                    Swal.fire({
+                        title: 'Server Error',
+                        text: 'An error occurred while fetching data. Please try again later.',
+                        icon: 'error'
+                    });
+                    console.error('Error:', error);
+                });
+            }
+            
+            async function processWithGemini(prompt, apiKey) {
+                try {
+                    spinnerContainer.style.display = 'block';
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }]
+                        })
+                    });
+                    const data = await response.json();
+                    spinnerContainer.style.display = 'none';
+                    if (data.error) {
+                        Swal.fire({
+                            title: 'Gemini API Error',
+                            text: data.error.message || 'Error processing with Gemini',
+                            icon: 'error'
+                        });
+                        return;
+                    }
+                    // Extract text from Gemini response
+                    let resultText = '';
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                        resultText = data.candidates[0].content.parts[0].text;
+                    }
+                    // Display results
+                    displayResults(resultText);
+                    // Set a random quote
+                    displayRandomQuote();
+                } catch (error) {
+                    spinnerContainer.style.display = 'none';
+                    Swal.fire({
+                        title: 'API Error',
+                        text: 'Error connecting to Gemini API. Please check your API key and try again.',
+                        icon: 'error'
+                    });
+                    console.error('Gemini API error:', error);
+                }
+            }
+            function displayResults(text) {
+                // 1. Initial formatting (as before):
+                let formattedText = text;
+                // 2. Style journal headers (bold):
+                formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<div class="journal-header"><strong>$1</strong></div>');
+                // 3. Style articles, making the title italic and "Key findings:" bold:
+                formattedText = formattedText.replace(/(\d+\.)\s*"(.*?)"\s*by\s*(.*?)\s*\((\d+)\)\s*(Key findings:\s*)(.*?)(?=\d+\.|$)/gs,
+                    '<div class="article">' +
+                    '$1 <em>"$2"</em> by $3 ($4)<br>' +  // Italicize the title
+                    '<strong>$5</strong>$6' +             // Bold "Key findings:"
+                    '</div>'
+                );
+                // 4. Replace \n with <br> for better HTML rendering
+                formattedText = formattedText.replace(/\n/g, '<br>');
+                // --- Rest of the function remains the same ---
+                resultsCard.style.display = 'block';
+                const resultsContent = document.createElement('div');
+                resultsContent.className = 'results-content';
+                resultsContent.innerHTML = formattedText; // Use innerHTML, not textContent
+                // Clear previous results
+                const cardBody = resultsCard.querySelector('.card-body');
+                cardBody.innerHTML = ''; // Clear previous content
+                cardBody.appendChild(resultsContent);
+                // Add copy button (as before)
+                const copyButton = document.createElement('button');
+                copyButton.className = 'btn copy-button';
+                copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy Results';
+                copyButton.style.display = 'block';
+                copyButton.addEventListener('click', function() {
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        setTimeout(() => {
+                            this.innerHTML = '<i class="fas fa-copy"></i> Copy Results';
+                        }, 2000);
+                    });
+                });
+                cardBody.appendChild(copyButton);
+                // Scroll to results (as before)
+                resultsCard.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | Academic Journal Summarizer</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-hover: #3a56d4;
+            --secondary: #4cc9f0;
+            --dark: #2b2d42;
+            --light: #f8f9fa;
+            --light-accent: #e9ecef;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 960px;
+            padding: 0 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(50%, -50%);
+        }
+        
+        .header h1 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header p {
+            font-weight: 400;
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+            max-width: 600px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .btn-custom {
+            background-color: white;
+            color: var(--primary);
+            border: none;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.9);
+            color: var(--primary-hover);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-body {
+            padding: 2rem;
+        }
+        
+        .connect-section {
+            background-color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+        
+        .connect-section h4 {
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+        
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .social-icons a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--light-accent);
+            color: var(--primary);
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .social-icons a:hover {
+            background-color: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+            text-align: center;
+            color: #6c757d;
+            border-top: 1px solid var(--light-accent);
+        }
+        
+        .footer a {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        
+        .footer a:hover {
+            color: var(--primary-hover);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header {
+                padding: 2rem 1.5rem;
+            }
+            
+            .card-body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>About Academic Journal Summarizer</h1>
+            <p>An intelligent tool that helps researchers and students quickly extract key insights from academic papers.</p>
+            <a class="btn btn-custom" href="/" role="button">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Summarizer
+            </a>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-10 offset-lg-1">
+                <div class="card">
+                    <div class="card-body">
+                        {{ about_text | safe }}
+                    </div>
+                </div>
+                
+                <div class="connect-section">
+                    <h4>Connect With Me</h4>
+                    <p>I'd love to hear your feedback or answer any questions about this project. Please feel free to contact me at <a href="mailto:emre@journo.com.tr">emre@journo.com.tr</a> or connect on social media.</p>
+                    <div class="social-icons">
+                        <a href="https://www.linkedin.com/in/emre-kizilkaya" target="_blank" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="https://bsky.app/profile/emrekizilkaya.bsky.social" target="_blank" aria-label="Bluesky">
+                            <i class="fas fa-square"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p>&copy; 2025 <a href="https://emrekizilkaya.com" target="_blank">Emre Kızılkaya</a> | Academic Journal Summarizer</p>
+        </footer>
+    </div>
+</body>
+</html>
