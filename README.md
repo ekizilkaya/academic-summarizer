@@ -1,7 +1,5 @@
 # Academic Journal Summarizer 📚🤖
 
-**Try it out now! [https://academic-summarizer.emrekizilkaya.com/](https://academic-summarizer.emrekizilkaya.com/)**
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
@@ -14,6 +12,8 @@
 *   **Focus:** Quantitative Studies
 
 This application uses the Gemini 2.0 Flash LLM (via API) to generate concise summaries of recent academic papers, with a strong emphasis on extracting and highlighting quantitative results. It's designed to help researchers (especially in Communication, but adaptable to other fields) stay up-to-date with the latest research, *efficiently*.
+
+## **Try it out now! [https://academic-summarizer.emrekizilkaya.com/](https://academic-summarizer.emrekizilkaya.com/)**
 
 ## Features ✨
 
